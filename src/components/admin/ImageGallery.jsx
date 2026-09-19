@@ -51,8 +51,16 @@ const ImageGallery = () => {
     fetchMedia();
   }, []);
 
+  const ensureHttps = (url) => {
+    if (!url) return "";
+    if (url.startsWith("//")) return `https:${url}`;
+    return url.replace(/^http:\/\//i, "https://");
+  };
+
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
+    if (!text) return;
+    const secureUrl = ensureHttps(text);
+    navigator.clipboard.writeText(secureUrl);
     toast.success("Copied to clipboard!");
   };
 
@@ -306,7 +314,7 @@ const ImageGallery = () => {
                   </div>
                   <div className="flex gap-2 w-full sm:w-auto">
                     <a
-                      href={selectedMedia.url}
+                      href={ensureHttps(selectedMedia.url)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors text-center"

@@ -1,7 +1,7 @@
 // contactApi.js - API functions for contact-related operations
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4002";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Create axios instance with default config
 const api = axios.create({
@@ -172,12 +172,12 @@ const submitContactForm = async (formData) => {
       ...(formData.courseId && { courseId: formData.courseId }),
       ...(formData.courseTitle &&
         formData.courseTitle.trim() !== "" && {
-          courseTitle: formData.courseTitle.trim(),
-        }),
+        courseTitle: formData.courseTitle.trim(),
+      }),
       ...(formData.subject &&
         formData.subject.trim() !== "" && {
-          subject: formData.subject.trim(),
-        }),
+        subject: formData.subject.trim(),
+      }),
     };
 
     // Add retry logic for rate limiting
@@ -293,7 +293,7 @@ const submitContactForm = async (formData) => {
 
       throw new Error(
         lastErrData?.message ||
-          `Too many requests. Please wait ${timeMessage} before trying again.`,
+        `Too many requests. Please wait ${timeMessage} before trying again.`,
       );
     }
 
@@ -332,8 +332,8 @@ const submitContactForm = async (formData) => {
     // Handle other errors
     throw new Error(
       errData?.message ||
-        error.message ||
-        "Failed to submit the contact form. Please try again later.",
+      error.message ||
+      "Failed to submit the contact form. Please try again later.",
     );
   }
 };

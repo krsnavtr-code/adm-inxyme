@@ -72,7 +72,7 @@ const ImageUploader = ({
       setIsUploading(true);
       const token = localStorage.getItem("token");
       const API_URL =
-        import.meta.env.VITE_API_BASE_URL || "http://localhost:4002/api";
+        import.meta.env.VITE_API_BASE_URL;
 
       // Upload each file individually
       for (let i = 0; i < files.length; i++) {

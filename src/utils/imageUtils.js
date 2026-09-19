@@ -1,5 +1,5 @@
 // import { VITE_API_URL } from '../api/axios.js';
-const VITE_API_URL= import.meta.env.VITE_API_URL;
+const VITE_API_URL = import.meta.env.VITE_API_URL;
 
 /**
  * Get full image URL from a path
@@ -8,17 +8,17 @@ const VITE_API_URL= import.meta.env.VITE_API_URL;
  */
 // export const getImageUrl = (path) => {
 //   if (!path) return '';
-  
+
 //   // If it's already a full URL, return as is
 //   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
 //     return path;
 //   }
-  
+
 //   // If it's a path starting with /, use the API URL as base
 //   if (path.startsWith('/')) {
 //     return `${VITE_API_URL}${path}`;
 //   }
-  
+
 //   // Otherwise, assume it's a relative path from the uploads directory
 //   return `${VITE_API_URL}/public/uploads/${path}`;
 // };
@@ -34,7 +34,7 @@ export const getImageUrl = (path) => {
   }
 
   const baseUrl = import.meta.env.VITE_API_URL || window.location.origin;
-  
+
   // If it's already a full URL
   if (path.startsWith('http')) {
     // If it's from our own domain or eklabya.com, return as is
@@ -47,10 +47,10 @@ export const getImageUrl = (path) => {
 
   // Remove any leading slashes or uploads/ from the path
   let cleanPath = path.replace(/^\/+|^uploads\/+/, '');
-  
+
   // Make sure we don't have any double slashes
   cleanPath = cleanPath.replace(/\/+/g, '/');
-  
+
   // Construct the final URL
   return `${baseUrl}/uploads/${cleanPath}`;
 };
@@ -66,20 +66,20 @@ export const getImageUrl = (path) => {
  */
 export const getThumbnailUrl = (path, { width = 300, height = 200, crop = true } = {}) => {
   if (!path) return '';
-  
+
   // For external images, return as is (or implement your CDN logic here)
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:')) {
     return path;
   }
-  
+
   // For local images, you might want to use an image processing service
   // This is a placeholder - adjust based on your backend capabilities
   const baseUrl = path.startsWith('/') ? VITE_API_URL : `${VITE_API_URL}/uploads`;
   const imagePath = path.startsWith('/') ? path : `/${path}`;
-  
+
   // Example: Using a hypothetical image processing endpoint
   // return `${baseUrl}/image/process${imagePath}?width=${width}&height=${height}&crop=${crop}`;
-  
+
   // For now, just return the full URL
   return `${baseUrl}${imagePath}`;
 };

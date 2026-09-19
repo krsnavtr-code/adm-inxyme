@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4002/api') + '/v1/tasks';
+const API_URL = (import.meta.env.VITE_API_BASE_URL) + '/v1/tasks';
 
 // Add request interceptor
 axios.interceptors.request.use(
@@ -45,7 +45,7 @@ const getAuthToken = () => {
     if (token) {
       return token;
     }
-    
+
     // Fallback: Check for token in userInfo.token (legacy)
     const userInfo = localStorage.getItem('userInfo');
     if (userInfo) {
@@ -58,7 +58,7 @@ const getAuthToken = () => {
         console.error('Error parsing userInfo:', e);
       }
     }
-    
+
     console.error('No auth token found in localStorage');
     return null;
   } catch (error) {
@@ -70,10 +70,10 @@ const getAuthToken = () => {
 // Get auth config with error handling
 const getConfig = () => {
   const token = getAuthToken();
-  
+
   if (!token) {
     console.error('No auth token available. User might need to log in again.');
-    
+
     // Check if we're already on the login page to avoid redirect loops
     if (!window.location.pathname.includes('/login')) {
       // Store the current URL to redirect back after login
@@ -81,10 +81,10 @@ const getConfig = () => {
       // Redirect to login page
       window.location.href = '/login';
     }
-    
+
     throw new Error('Your session has expired. Please log in again.');
   }
-  
+
   return {
     headers: {
       'Content-Type': 'application/json',
@@ -115,18 +115,18 @@ export const getTasksBySession = async (sessionId) => {
 
   try {
     const config = getConfig();
-    
+
     // Log request details (without exposing sensitive data)
     console.debug('Fetching tasks for session:', {
       endpoint: `${API_URL}/session/${sessionId}`,
       hasAuthHeader: !!config.headers.Authorization
     });
-    
+
     const response = await axios.get(
       `${API_URL}/session/${sessionId}`,
       config
     );
-    
+
     return response.data;
   } catch (error) {
     const errorDetails = {
@@ -135,9 +135,9 @@ export const getTasksBySession = async (sessionId) => {
       endpoint: `${API_URL}/session/${sessionId}`,
       timestamp: new Date().toISOString()
     };
-    
+
     console.error('Error fetching tasks:', errorDetails);
-    
+
     // Handle specific error cases
     if (error.response) {
       // Server responded with an error status code
@@ -146,26 +146,26 @@ export const getTasksBySession = async (sessionId) => {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
-        
+
         // Store the current URL to redirect back after login
         if (!window.location.pathname.includes('/login')) {
           localStorage.setItem('redirectAfterLogin', window.location.pathname);
           window.location.href = '/login';
         }
-        
+
         throw new Error('Your session has expired. Please log in again.');
       }
-      
+
       // Handle other error statuses
       if (error.response.status === 404) {
         throw new Error('Session not found or you do not have access to it');
       }
-      
+
       // Handle 500 errors
       if (error.response.status >= 500) {
         throw new Error('Server error. Please try again later.');
       }
-      
+
       // Handle validation errors
       if (error.response.data?.errors) {
         const validationErrors = error.response.data.errors;
@@ -174,7 +174,7 @@ export const getTasksBySession = async (sessionId) => {
           .join('\n');
         throw new Error(errorMessage || 'Validation error occurred');
       }
-      
+
       // Handle custom error message from server
       if (error.response.data?.message) {
         throw new Error(error.response.data.message);
@@ -186,7 +186,7 @@ export const getTasksBySession = async (sessionId) => {
       }
       throw new Error('Network error. Please check your connection and try again.');
     }
-    
+
     // Default error message
     throw new Error('Failed to fetch tasks. Please try again.');
   }
@@ -237,12 +237,12 @@ export const deleteTask = async (taskId) => {
 
 // Submit task answers
 export const submitTaskAnswers = async ({ taskId, sessionId, answers, score, timeSpent }) => {
-  try {    
+  try {
     const config = getConfig();
-    
+
     const response = await axios.post(
       `${API_URL}/${taskId}/submit`,
-      { 
+      {
         sessionId,
         answers,
         score,
@@ -251,7 +251,7 @@ export const submitTaskAnswers = async ({ taskId, sessionId, answers, score, tim
       },
       config
     );
-    
+
     return response.data;
   } catch (error) {
     console.error('Error submitting task answers:', {
