@@ -185,7 +185,7 @@ const ManageFAQs = () => {
     setFaqs(items);
     
     try {
-      const orderedIds = items.map(item => item._id);
+      const orderedIds = items.map(item => item._id || item.id).filter(Boolean);
       await updateFAQOrder(orderedIds);
       toast.success('FAQ order updated');
     } catch (error) {
@@ -269,76 +269,80 @@ const ManageFAQs = () => {
                     {...provided.droppableProps}
                     ref={provided.innerRef}
                   >
-                    {faqs.map((faq, index) => (
-                      <Draggable key={faq._id} draggableId={faq._id} index={index}>
-                        {(provided) => (
-                          <li 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                          >
-                            <div className="px-4 py-4 sm:px-6">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <div 
-                                    className="p-2 mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move"
-                                    {...provided.dragHandleProps}
-                                  >
-                                    <FaBars />
-                                  </div>
-                                  <div>
-                                    <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      {faq.question}
-                                    </h3>
-                                    <div className="mt-1 flex items-center">
-                                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                        faq.status === 'active' 
-                                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                          : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                                      }`}>
-                                        {faq.status}
-                                      </span>
+                    {faqs.map((faq, index) => {
+                      const faqId = String(faq._id || faq.id || `faq-${index}`);
+                      const isItemEditing = editingFAQ && (editingFAQ._id === faq._id || editingFAQ.id === faq.id);
+                      return (
+                        <Draggable key={faqId} draggableId={faqId} index={index}>
+                          {(provided) => (
+                            <li 
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className="bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                            >
+                              <div className="px-4 py-4 sm:px-6">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center">
+                                    <div 
+                                      className="p-2 mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-move"
+                                      {...provided.dragHandleProps}
+                                    >
+                                      <FaBars />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                                        {faq.question}
+                                      </h3>
+                                      <div className="mt-1 flex items-center">
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                          faq.status === 'active' 
+                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                                        }`}>
+                                          {faq.status}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
+                                  <div className="ml-4 flex-shrink-0 flex space-x-2">
+                                    <button
+                                      onClick={() => {
+                                        setEditingFAQ(faq);
+                                        setShowForm(true);
+                                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                                      }}
+                                      className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                                      title="Edit"
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteFAQ(faq._id || faq.id)}
+                                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                      title="Delete"
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="ml-4 flex-shrink-0 flex space-x-2">
-                                  <button
-                                    onClick={() => {
-                                      setEditingFAQ(faq);
-                                      setShowForm(true);
-                                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                                    }}
-                                    className="p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                    title="Edit"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteFAQ(faq._id)}
-                                    className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                    title="Delete"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
+                                {isItemEditing && (
+                                  <div className="mt-4 pl-8">
+                                    <FAQForm
+                                      faq={editingFAQ}
+                                      onSave={async (data) => {
+                                        await handleUpdateFAQ(editingFAQ._id || editingFAQ.id, data);
+                                      }}
+                                      onCancel={() => setEditingFAQ(null)}
+                                      isEditing={true}
+                                    />
+                                  </div>
+                                )}
                               </div>
-                              {editingFAQ?._id === faq._id && (
-                                <div className="mt-4 pl-8">
-                                  <FAQForm
-                                    faq={editingFAQ}
-                                    onSave={async (data) => {
-                                      await handleUpdateFAQ(editingFAQ._id, data);
-                                    }}
-                                    onCancel={() => setEditingFAQ(null)}
-                                    isEditing={true}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </li>
-                        )}
-                      </Draggable>
-                    ))}
+                            </li>
+                          )}
+                        </Draggable>
+                      );
+                    })}
                     {provided.placeholder}
                   </ul>
                 )}

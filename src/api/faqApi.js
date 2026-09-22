@@ -6,34 +6,44 @@ const FAQ_ENDPOINT = '/faqs';
 // Mock FAQ data to use when API is not available
 const MOCK_FAQS = [
   {
+    _id: '1',
     id: '1',
-    question: 'What is FirstVite?',
-    answer: 'FirstVite is an online learning platform that offers high-quality courses on various topics to help you advance your skills and career.',
-    order: 1
+    question: 'What is Inxyme?',
+    answer: 'Inxyme is an online learning platform that offers high-quality courses on various topics to help you advance your skills and career.',
+    order: 1,
+    status: 'active'
   },
   {
+    _id: '2',
     id: '2',
     question: 'How do I enroll in a course?',
     answer: 'Simply browse our course catalog, select a course you\'re interested in, and click the "Enroll Now" button to get started.',
-    order: 2
+    order: 2,
+    status: 'active'
   },
   {
+    _id: '3',
     id: '3',
     question: 'Do you offer certificates?',
     answer: 'Yes, we offer certificates of completion for all our courses. You can download your certificate after successfully completing a course.',
-    order: 3
+    order: 3,
+    status: 'active'
   },
   {
+    _id: '4',
     id: '4',
     question: 'What payment methods do you accept?',
-    answer: 'We accept various payment methods including credit/debit cards, PayPal, and other popular payment gateways.',
-    order: 4
+    answer: 'We accept various payment methods including credit/debit cards, UPI, and other popular payment gateways.',
+    order: 4,
+    status: 'active'
   },
   {
+    _id: '5',
     id: '5',
     question: 'Can I get a refund?',
-    answer: 'Yes, we offer a 14-day money-back guarantee if you\'re not satisfied with your course purchase.',
-    order: 5
+    answer: 'Yes, we offer a money-back guarantee if you\'re not satisfied with your course purchase within the refund period.',
+    order: 5,
+    status: 'active'
   }
 ];
 
