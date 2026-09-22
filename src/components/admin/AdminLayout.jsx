@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import * as adminApi from "../../api/adminApi";
 
@@ -7,6 +7,13 @@ const AdminLayout = () => {
   const { currentUser, isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
   const [availablePages, setAvailablePages] = useState([]);
+
+  const getNavLinkClass = ({ isActive }) =>
+    `flex items-center px-6 py-3 transition-colors ${
+      isActive
+        ? "bg-indigo-950 text-white font-semibold border-l-4 border-white shadow-inner"
+        : "text-indigo-100 hover:bg-indigo-700/60"
+    }`;
 
   useEffect(() => {
     if (currentUser && isAuthenticated) {
@@ -87,9 +94,9 @@ const AdminLayout = () => {
             <div>
               {/* Dashboard - always show for admin users */}
               {hasPermission("dashboard") && (
-                <Link
+                <NavLink
                   to="/admin/dashboard"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -106,14 +113,14 @@ const AdminLayout = () => {
                     ></path>
                   </svg>
                   Dashboard
-                </Link>
+                </NavLink>
               )}
 
               {/* LMS Management */}
               {hasPermission("lms-management") && (
-                <Link
+                <NavLink
                   to="/admin/lms-management"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -130,14 +137,14 @@ const AdminLayout = () => {
                     ></path>
                   </svg>
                   LMS Management
-                </Link>
+                </NavLink>
               )}
 
               {/* Test Q&A */}
               {hasPermission("test-qa") && (
-                <Link
+                <NavLink
                   to="/admin/test-qa"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -154,14 +161,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Test Q&A
-                </Link>
+                </NavLink>
               )}
 
               {/* Courses */}
               {hasPermission("courses") && (
-                <Link
+                <NavLink
                   to="/admin/courses"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -178,14 +185,14 @@ const AdminLayout = () => {
                     ></path>
                   </svg>
                   Courses
-                </Link>
+                </NavLink>
               )}
 
               {/* Send Brochure */}
               {hasPermission("send-brochure") && (
-                <Link
+                <NavLink
                   to="/admin/send-brochure"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -202,14 +209,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Send Brochure
-                </Link>
+                </NavLink>
               )}
 
               {/* Send Proposal */}
               {hasPermission("send-proposal") && (
-                <Link
+                <NavLink
                   to="/admin/send-proposal"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -226,14 +233,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Send College Proposal
-                </Link>
+                </NavLink>
               )}
 
               {/* Custom Email Sender */}
               {hasPermission("custom-email") && (
-                <Link
+                <NavLink
                   to="/admin/custom-email"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -250,14 +257,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Custom Email Sender
-                </Link>
+                </NavLink>
               )}
 
               {/* Redirect Management */}
               {hasPermission("redirects") && (
-                <Link
+                <NavLink
                   to="/admin/redirects"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -274,14 +281,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   301 Redirects
-                </Link>
+                </NavLink>
               )}
 
               {/* Document Verification */}
               {hasPermission("document-verification") && (
-                <Link
+                <NavLink
                   to="/admin/document-verification"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -298,14 +305,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Document Verification
-                </Link>
+                </NavLink>
               )}
 
               {/* Candidates */}
               {hasPermission("candidates") && (
-                <Link
+                <NavLink
                   to="/admin/candidates"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="h-5 w-5 mr-3"
@@ -322,14 +329,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Candidates
-                </Link>
+                </NavLink>
               )}
 
               {/* Categories */}
               {hasPermission("categories") && (
-                <Link
+                <NavLink
                   to="/admin/categories"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -346,14 +353,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Categories
-                </Link>
+                </NavLink>
               )}
 
               {/* Users */}
               {hasPermission("users") && (
-                <Link
+                <NavLink
                   to="/admin/users"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -370,14 +377,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Users
-                </Link>
+                </NavLink>
               )}
 
               {/* Blog */}
               {hasPermission("blog") && (
-                <Link
+                <NavLink
                   to="/admin/blog"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -394,14 +401,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Blog
-                </Link>
+                </NavLink>
               )}
 
               {/* Media Mentions */}
               {hasPermission("media-mentions") && (
-                <Link
+                <NavLink
                   to="/admin/media-mentions"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -418,14 +425,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Media Mentions
-                </Link>
+                </NavLink>
               )}
 
               {/* Awards */}
               {hasPermission("awards") && (
-                <Link
+                <NavLink
                   to="/admin/awards"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -442,14 +449,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Awards
-                </Link>
+                </NavLink>
               )}
 
               {/* Contacts */}
               {hasPermission("contacts") && (
-                <Link
+                <NavLink
                   to="/admin/contacts"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -466,14 +473,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Contacts
-                </Link>
+                </NavLink>
               )}
 
               {/* Payments */}
               {hasPermission("payments") && (
-                <Link
+                <NavLink
                   to="/admin/payments"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -490,14 +497,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Payments
-                </Link>
+                </NavLink>
               )}
 
               {/* Enrollments */}
               {hasPermission("enrollments") && (
-                <Link
+                <NavLink
                   to="/admin/enrollments"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -514,14 +521,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Enrollments
-                </Link>
+                </NavLink>
               )}
 
               {/* FAQs */}
               {hasPermission("faqs") && (
-                <Link
+                <NavLink
                   to="/admin/faqs"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -538,14 +545,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   FAQs
-                </Link>
+                </NavLink>
               )}
 
               {/* Media Gallery */}
               {hasPermission("image-gallery") && (
-                <Link
+                <NavLink
                   to="/admin/image-gallery"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -562,14 +569,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Media Gallery
-                </Link>
+                </NavLink>
               )}
 
               {/* Admin Management - only show to users with permission */}
               {hasPermission("admin-management") && (
-                <Link
+                <NavLink
                   to="/admin/admin-management"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -586,14 +593,14 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Admin Management
-                </Link>
+                </NavLink>
               )}
 
               {/* Login Records */}
               {hasPermission("login-records") && (
-                <Link
+                <NavLink
                   to="/admin/login-records"
-                  className="flex items-center px-6 py-3 text-indigo-100 hover:bg-indigo-700"
+                  className={getNavLinkClass}
                 >
                   <svg
                     className="w-5 h-5 mr-3"
@@ -610,7 +617,7 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Login Records
-                </Link>
+                </NavLink>
               )}
 
               <button
