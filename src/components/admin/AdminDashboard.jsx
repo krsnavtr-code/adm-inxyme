@@ -76,24 +76,36 @@ const AdminDashboard = () => {
     fetchData();
 
     // Setup socket connection for hot lead alerts
-    const socket = io(import.meta.env.VITE_API_URL, {
-      withCredentials: true,
-    });
+    let socket;
+    try {
+      const socketUrl = import.meta.env.VITE_API_URL;
+      if (socketUrl) {
+        socket = io(socketUrl, {
+          withCredentials: true,
+          transports: ["websocket", "polling"],
+          reconnectionAttempts: 5,
+        });
 
-    socket.on("hot-lead-alert", (data) => {
-      toast.info(`🔥 ${data.message} | Call: ${data.phone}`, {
-        duration: 10000, // Show for 10 seconds
-        position: "top-right",
-        style: {
-          background: "#FEF3C7",
-          color: "#92400E",
-          border: "2px solid #F59E0B",
-        },
-      });
-    });
+        socket.on("hot-lead-alert", (data) => {
+          toast.info(`🔥 ${data.message} | Call: ${data.phone}`, {
+            duration: 10000, // Show for 10 seconds
+            position: "top-right",
+            style: {
+              background: "#FEF3C7",
+              color: "#92400E",
+              border: "2px solid #F59E0B",
+            },
+          });
+        });
+      }
+    } catch (err) {
+      console.warn("Socket initialization error:", err);
+    }
 
     return () => {
-      socket.disconnect();
+      if (socket) {
+        socket.disconnect();
+      }
     };
   }, []);
 
