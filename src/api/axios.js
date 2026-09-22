@@ -38,12 +38,14 @@ api.interceptors.request.use(
       "/auth/refresh-token",
       "/auth/forgot-password",
       "/auth/reset-password",
+      "/auth/verify-admin-otp",
+      "/auth/resend-admin-otp",
       "/categories", // Add public endpoints that don't require auth
       "/redirects/check", // Public redirect check endpoint
     ];
 
     // Don't modify the config for public endpoints
-    if (publicEndpoints.some((endpoint) => config.url.endsWith(endpoint))) {
+    if (publicEndpoints.some((endpoint) => config.url && config.url.includes(endpoint))) {
       return config;
     }
 
