@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Helmet } from 'react-helmet-async';
 import { 
   getAllFAQs, 
   createFAQ, 
@@ -114,6 +113,7 @@ const ManageFAQs = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    document.title = 'Manage FAQs - Admin Panel';
     fetchFAQs();
   }, []);
 
@@ -208,10 +208,6 @@ const ManageFAQs = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 sm:p-8">
-      <Helmet>
-        <title>Manage FAQs - Admin Panel</title>
-      </Helmet>
-
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
