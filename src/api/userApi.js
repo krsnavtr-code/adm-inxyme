@@ -11,17 +11,15 @@ const userApi = {
       const response = await api.get("/users", { params: filters });
       return response.data;
     } catch (error) {
-      console.error("Error fetching users:", {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        config: {
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers,
-        },
-      });
+      console.error(
+        "Error fetching users:",
+        error.response?.data?.message || error.response?.data || error.message,
+        {
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+        }
+      );
       throw error;
     }
   },
