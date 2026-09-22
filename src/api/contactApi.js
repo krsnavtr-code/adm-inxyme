@@ -470,7 +470,7 @@ const getContacts = async (options = {}) => {
  * @returns {Promise<{success: boolean, count?: number, data: Array<{Full_Name: string, email: string, phone: string, courses: string}>}>}
  */
 const getSecretContactData = async (
-  secretKey = "eklabya_contact_secret_key_2026",
+  secretKey = "inxyme_contact_secret_key_2026",
   options = {},
 ) => {
   try {
@@ -485,7 +485,7 @@ const getSecretContactData = async (
     const key =
       secretKey ||
       import.meta.env.VITE_CONTACT_SECRET_KEY ||
-      "eklabya_contact_secret_key_2026";
+      "inxyme_contact_secret_key_2026";
     const queryString = params.toString() ? `?${params.toString()}` : "";
 
     const response = await api.get(`/api/contact-data${queryString}`, {

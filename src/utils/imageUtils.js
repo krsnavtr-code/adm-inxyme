@@ -37,8 +37,8 @@ export const getImageUrl = (path) => {
 
   // If it's already a full URL
   if (path.startsWith('http')) {
-    // If it's from our own domain or eklabya.com, return as is
-    if (path.includes(window.location.hostname) || path.includes('eklabya.com')) {
+    // If it's from our own domain or inxyme.com, return as is
+    if (path.includes(window.location.hostname) || path.includes('inxyme.com')) {
       return path;
     }
     // For other external URLs, proxy through our backend

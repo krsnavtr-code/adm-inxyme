@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://www.eklabya.com/api";
+  import.meta.env.VITE_API_BASE_URL || "https://www.inxyme.com/api";
 
 // Helper function to extract filename from URL or path
 const getFilename = (urlOrPath) => {

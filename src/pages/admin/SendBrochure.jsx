@@ -490,7 +490,7 @@ const SendBrochure = () => {
       },
       courseEnquiry: {
         name: "Course Enquiry",
-        subject: `About {{courseName}} - Eklabya`,
+        subject: `About {{courseName}} - Inxyme`,
         content: `
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
   <p style="margin: 0 0 8px 0;">Dear {{studentName}},</p>
@@ -498,8 +498,7 @@ const SendBrochure = () => {
   <p style="margin: 0 0 8px 0;">
     Greetings from 
     <strong>
-    <span style="color: rgb(30, 144, 255);">e</span>!
-      <span style="color: rgb(244, 124, 38);">KLABYA</span>
+      <span style="color: #4f46e5;">Inxyme</span>
     </strong>
   </p> 
 
@@ -519,7 +518,7 @@ const SendBrochure = () => {
     <li style="margin-bottom: 4px;">✅ Real-time Case Studies & Projects</li>
     <li style="margin-bottom: 4px;">✅ Access to Server for Practical Training</li>
     <li style="margin-bottom: 4px;">✅ Resume Building + Interview Preparation</li>
-    <li style="margin-bottom: 4px;">✅ Certificate from Eklabya upon Completion</li>
+    <li style="margin-bottom: 4px;">✅ Certificate from Inxyme upon Completion</li>
   </ul>
 
   <h3 style="margin: 12px 0 6px 0; color: #222; font-size: 16px;">
@@ -533,14 +532,13 @@ const SendBrochure = () => {
   <p style="margin: 0 0 4px 0;">Warm regards,</p>
   <p style="margin: 0 0 4px 0;">
     Team – 
-    <span style="color: rgb(30, 144, 255);">e</span> 
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
-  <p style="margin: 0 0 4px 0;">📩 info@eklabya.com</p>
+  <p style="margin: 0 0 4px 0;">📩 info@inxyme.com</p>
   <p style="margin: 0;">
     🌐 
-    <a href="https://www.eklabya.com" style="color: rgb(30, 144, 255); text-decoration: none;">
-      www.eklabya.com
+    <a href="https://www.inxyme.com" style="color: rgb(30, 144, 255); text-decoration: none;">
+      www.inxyme.com
     </a>
   </p>
 </div>
@@ -548,57 +546,30 @@ const SendBrochure = () => {
       },
       webinarInvite: {
         name: "Learning Approach Invitation",
-        subject: `Take the Next Step in Your Career with Eklabya`,
+        subject: `Take the Next Step in Your Career with Inxyme`,
         content: `
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
   <p style="margin: 0 0 8px 0;">Dear {{studentName}},</p>
 
   <p style="margin: 0 0 8px 0;">
     Greetings from 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>!
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>!
   </p>
 
   <p style="margin: 0 0 8px 0;">
-    We’re excited to invite you to enroll in one of our professional certification programs designed to help you enhance your skills and career growth.
-  </p>
-
-  <p style="margin: 0 0 8px 0;">
-    At 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>, we offer a wide range of in-demand programs such as 
-    <strong>Java</strong>, <strong>Python</strong>, <strong>AI & Machine Learning</strong>, 
-    <strong>Cyber Security</strong>, <strong>Digital Marketing</strong>, <strong>SAP</strong>, 
-    <strong>Power BI</strong>, <strong>Cloud Computing (Azure)</strong>, <strong>Salesforce</strong>, and more.
-  </p>
-
-  <p style="margin: 0 0 8px 0;">
-    Each program is structured to provide hands-on learning with real-world applications — helping you gain the expertise needed to stand out in today’s competitive job market.
-  </p>
-
-  <p style="margin: 0 0 8px 0;">
-    If you’re looking to upgrade your skills or switch to a high-growth career path, this is the perfect time to get started!
-  </p>
-
-  <p style="margin: 0 0 8px 0;">
-    Please feel free to reply to this email or contact us directly for more details about the courses, duration, and fee structure.
-  </p>
-
-  <p style="margin: 0 0 8px 0;">
-    Looking forward to helping you begin your learning journey with us.
+    We are excited to invite you to explore our career-advancing online courses.
   </p>
 
   <p style="margin: 0 0 4px 0;">Warm regards,</p>
   <p style="margin: 0 0 4px 0;">
     Team – 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
-  <p style="margin: 0 0 4px 0;">📩 info@eklabya.com</p>
+  <p style="margin: 0 0 4px 0;">📩 info@inxyme.com</p>
   <p style="margin: 0;">
     🌐 
-    <a href="https://www.eklabya.com" style="color: rgb(30, 144, 255); text-decoration: none;">
-      www.eklabya.com
+    <a href="https://www.inxyme.com" style="color: rgb(30, 144, 255); text-decoration: none;">
+      www.inxyme.com
     </a>
   </p>
 </div>
@@ -606,15 +577,14 @@ const SendBrochure = () => {
       },
       videoSender: {
         name: "Video Sender",
-        subject: `Take the Next Step in Your Career with Eklabya`,
+        subject: `Take the Next Step in Your Career with Inxyme`,
         content: `
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
   <p style="margin: 0 0 8px 0;">Dear {{studentName}},</p>
 
   <p style="margin: 0 0 8px 0;">
     Greetings from 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>!
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>!
   </p>
 
   <p style="margin: 0 0 8px 0;">
@@ -623,8 +593,7 @@ const SendBrochure = () => {
 
   <p style="margin: 0 0 8px 0;">
     At 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>, we offer a wide range of in-demand programs such as 
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>, we offer a wide range of in-demand programs such as 
     <strong>Java</strong>, <strong>Python</strong>, <strong>AI & Machine Learning</strong>, 
     <strong>Cyber Security</strong>, <strong>Digital Marketing</strong>, <strong>SAP</strong>, 
     <strong>Power BI</strong>, <strong>Cloud Computing (Azure)</strong>, <strong>Salesforce</strong>, and more.
@@ -653,17 +622,16 @@ const SendBrochure = () => {
   <p style="margin: 0 0 4px 0;">Warm regards,</p>
   <p style="margin: 0 0 4px 0;">
     Team – 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
-  <p style="margin: 0 0 4px 0;">📩 info@eklabya.com</p>
-  <p style="margin: 0;">🌐 <a href="https://www.eklabya.com" style="color: rgb(30, 144, 255); text-decoration: none;">www.eklabya.com</a></p>
+  <p style="margin: 0 0 4px 0;">📩 info@inxyme.com</p>
+  <p style="margin: 0;">🌐 <a href="https://www.inxyme.com" style="color: rgb(30, 144, 255); text-decoration: none;">www.inxyme.com</a></p>
 </div>
 `,
       },
       allCoursesProposal: {
         name: "All Courses Proposal",
-        subject: `Proposal for Student Skill Development & Certification Programs – Eklabya`,
+        subject: `Proposal for Student Skill Development & Certification Programs – Inxyme`,
         content: `
 <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #333;">
   <p style="margin: 0 0 8px 0;">
@@ -672,14 +640,12 @@ const SendBrochure = () => {
 
   <p style="margin: 0 0 8px 0;">
     Warm greetings from 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
 
   <p style="margin: 0 0 8px 0;">
     We are pleased to introduce 
-    <span style="color: rgb(30, 144, 255);">e</span>
-    <span style="color: rgb(244, 124, 38);">KLABYA</span>, a leading online learning platform focused on delivering high-quality certification programs designed to enhance students’ employability and industry readiness.
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>, a leading online learning platform focused on delivering high-quality certification programs designed to enhance students’ employability and industry readiness.
   </p>
 
   <p style="margin: 0 0 8px 0;">
@@ -711,9 +677,9 @@ const SendBrochure = () => {
 
   <ul style="margin: 0 0 8px 20px; padding: 0;">
     <li>100% Online Learning (Live + Recorded Classes)</li>
-    <li>Delivered by Industry Experts from Eklabya</li>
+    <li>Delivered by Industry Experts from Inxyme</li>
     <li>Practical, Project-Based Learning</li>
-    <li>Certification from Eklabya</li>
+    <li>Certification from Inxyme</li>
     <li>Placement Guidance and Career Support</li>
     <li>Internship Assistance (where applicable)</li>
   </ul>
@@ -721,7 +687,7 @@ const SendBrochure = () => {
   <p style="margin: 8px 0;"><strong>Proposal for Tie-Up</strong></p>
 
   <p style="margin: 0 0 8px 0;">
-    We are looking forward to forming a strategic academic partnership with your institution. Through this collaboration, Royal Educational Institute students will gain access to our certified programs at special institutional pricing and benefit from joint skill enhancement initiatives like webinars, workshops, and hackathons.
+    We are looking forward to forming a strategic academic partnership with your institution. Through this collaboration, students will gain access to our certified programs at special institutional pricing and benefit from joint skill enhancement initiatives like webinars, workshops, and hackathons.
   </p>
 
   <p style="margin: 0 0 8px 0;">
@@ -736,13 +702,13 @@ const SendBrochure = () => {
 
   <p style="margin: 0 0 4px 0;">Warm regards,</p>
   <p style="margin: 0 0 4px 0;">
-    Team <span style="color: rgb(244, 124, 38)">e</span><span style="color: rgb(30, 144, 255)">KLABYA</span>
+    Team <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
   <p style="margin: 0 0 4px 0;">
-    <span style="color: rgb(244, 124, 38)">e</span><span style="color: rgb(30, 144, 255)">KLABYA</span>
+    <span style="color: #4f46e5; font-weight: bold;">Inxyme</span>
   </p>
-  <p style="margin: 0 0 4px 0;">📧 info@eklabya.com</p>
-  <p style="margin: 0;">📞 +91-9891030303 | 🌐 www.eklabya.com</p>
+  <p style="margin: 0 0 4px 0;">📧 info@inxyme.com</p>
+  <p style="margin: 0;">🌐 www.inxyme.com</p>
 </div>
 `,
       },

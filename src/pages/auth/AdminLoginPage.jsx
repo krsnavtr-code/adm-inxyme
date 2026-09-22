@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 mb-4 shadow-lg shadow-indigo-950">
             <Shield className="w-8 h-8" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Eklabya Admin</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Inxyme Admin</h1>
           <p className="text-slate-400 text-sm mt-1">
             Secure administration and management portal
           </p>
@@ -95,7 +95,7 @@ export default function AdminLoginPage() {
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
                   <input
                     type="email"
-                    placeholder="admin@eklabya.com"
+                    placeholder="admin@inxyme.com"
                     {...register("email", { required: "Email is required" })}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
                   />
@@ -199,7 +199,7 @@ export default function AdminLoginPage() {
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-8">
-          © {new Date().getFullYear()} Eklabya Education Platform. Confidential & Restricted.
+          © {new Date().getFullYear()} Inxyme. Confidential & Restricted.
         </p>
       </div>
     </div>

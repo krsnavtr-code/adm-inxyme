@@ -40,18 +40,18 @@ const CustomEmailSender = () => {
     },
     portalInvite: {
       name: "Portal Register Invite",
-      subject: "Invitation to Join Eklabya Learning Portal",
+      subject: "Invitation to Join Inxyme Learning Portal",
       body: `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Your Next Step: Register on Eklabya Learning Portal</title>
+  <title>Your Next Step: Register on Inxyme Learning Portal</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
     <div style="text-align: center; margin-bottom: 30px;">
-      <h1 style="color: #667eea; margin: 0; font-size: 28px;">Welcome to Eklabya!</h1>
+      <h1 style="color: #667eea; margin: 0; font-size: 28px;">Welcome to Inxyme!</h1>
     </div>
     
     <p style="color: #333; font-size: 16px; line-height: 1.6;">
@@ -75,7 +75,7 @@ const CustomEmailSender = () => {
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="https://www.eklabya.com/register" 
+      <a href="https://www.inxyme.com/register" 
          style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; 
                 padding: 12px 30px; 
@@ -94,8 +94,8 @@ const CustomEmailSender = () => {
     
     <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; color: #666; font-size: 14px;">
       <p style="margin: 0;">Best regards,</p>
-      <p style="margin: 5px 0 0 0; font-weight: bold;">The Eklabya Team</p>
-      <p style="margin: 5px 0 0 0;">www.eklabya.com</p>
+      <p style="margin: 5px 0 0 0; font-weight: bold;">The Inxyme Team</p>
+      <p style="margin: 5px 0 0 0;">www.inxyme.com</p>
     </div>
   </div>
 </body>
@@ -103,7 +103,7 @@ const CustomEmailSender = () => {
     },
     paymentConfirmation: {
       name: "Payment Confirmation",
-      subject: "Payment Confirmation - Eklabya",
+      subject: "Payment Confirmation - Inxyme",
       body: `<!DOCTYPE html>
 <html>
 <head>
@@ -127,7 +127,7 @@ const CustomEmailSender = () => {
     </p>
     
     <p style="color: #333; font-size: 16px; line-height: 1.6;">
-      We're pleased to confirm that your payment has been successfully processed. Thank you for choosing Eklabya for your learning journey!
+      We're pleased to confirm that your payment has been successfully processed. Thank you for choosing Inxyme for your learning journey!
     </p>
     
     <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -138,7 +138,7 @@ const CustomEmailSender = () => {
     </div>
     
     <div style="text-align: center; margin: 30px 0;">
-      <a href="https://www.eklabya.com/profile" 
+      <a href="https://www.inxyme.com/profile" 
          style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
                 color: white; 
                 padding: 12px 30px; 
@@ -157,8 +157,8 @@ const CustomEmailSender = () => {
     
     <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: center; color: #666; font-size: 14px;">
       <p style="margin: 0;">Best regards,</p>
-      <p style="margin: 5px 0 0 0; font-weight: bold;">The Eklabya Team</p>
-      <p style="margin: 5px 0 0 0;">www.eklabya.com</p>
+      <p style="margin: 5px 0 0 0; font-weight: bold;">The Inxyme Team</p>
+      <p style="margin: 5px 0 0 0;">www.inxyme.com</p>
     </div>
   </div>
 </body>

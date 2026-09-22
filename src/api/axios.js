@@ -5,7 +5,7 @@ import { toast } from "react-hot-toast";
 // console.log("axios baseURL:", import.meta.env.VITE_API_BASE_URL);
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "https://www.eklabya.com/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL || "https://www.inxyme.com/api",
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -159,7 +159,7 @@ api.interceptors.response.use(
 
         // Request new access token using refresh token
         const response = await axios.post(
-          `${import.meta.env.VITE_API_BASE_URL || "https://www.eklabya.com/api"}/auth/refresh-token`,
+          `${import.meta.env.VITE_API_BASE_URL || "https://www.inxyme.com/api"}/auth/refresh-token`,
           { refreshToken },
           {
             headers: {

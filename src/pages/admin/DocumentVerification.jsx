@@ -135,7 +135,7 @@ const DocumentVerification = () => {
     // Otherwise, construct the full URL using the base URL (without /api)
     const baseUrl =
       import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ||
-      "https://www.eklabya.com";
+      "https://www.inxyme.com";
     // Remove leading slash if present to avoid double slashes
     const cleanPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
     return `${baseUrl}/${cleanPath}`;

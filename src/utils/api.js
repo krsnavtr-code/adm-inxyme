@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://www.eklabya.com/api",
+  baseURL: import.meta.env.VITE_API_URL || "https://www.inxyme.com/api",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

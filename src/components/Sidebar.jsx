@@ -30,7 +30,7 @@ export default function Sidebar() {
           <GraduationCap className="w-6 h-6" />
         </div>
         <div>
-          <h1 className="font-bold text-lg text-white leading-tight">Eklabya</h1>
+          <h1 className="font-bold text-lg text-white leading-tight">Inxyme</h1>
           <span className="text-xs text-emerald-400 font-medium">Admin Panel</span>
         </div>
       </div>
@@ -70,7 +70,7 @@ export default function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-slate-200 truncate">Administrator</p>
-            <p className="text-xs text-slate-400 truncate">admin@eklabya.com</p>
+            <p className="text-xs text-slate-400 truncate">admin@inxyme.com</p>
           </div>
         </div>
       </div>

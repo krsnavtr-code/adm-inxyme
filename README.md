@@ -1,6 +1,6 @@
-# Eklabya Admin Client
+# Inxyme Admin Client
 
-Modern React + Vite + Tailwind CSS Admin Dashboard for Eklabya Platform.
+Modern React + Vite + Tailwind CSS Admin Dashboard for Inxyme Platform.
 
 ## Getting Started
 
