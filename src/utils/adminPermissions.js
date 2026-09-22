@@ -66,12 +66,21 @@ export const getPermissionForRoute = (pathname) => {
 
 // Check if user has permission for a specific page and action
 export const hasPermission = (user, page, action = "canView") => {
-  if (!user || user.role !== "admin") {
+  if (!user) {
     return false;
   }
 
-  // Super admin (no adminRoleId) has full access
-  if (!user.adminRoleId) {
+  const isAuthorized =
+    user.role === "admin" ||
+    user.role === "employee" ||
+    Boolean(user.adminRoleId);
+
+  if (!isAuthorized) {
+    return false;
+  }
+
+  // Super admin (role === "admin" without adminRoleId) has full access
+  if (user.role === "admin" && !user.adminRoleId) {
     return true;
   }
 
@@ -80,6 +89,11 @@ export const hasPermission = (user, page, action = "canView") => {
 
   if (!pagePermission) {
     return false;
+  }
+
+  // If user has access to this page (canView is true), allow all CRUD operations
+  if (pagePermission.canView === true) {
+    return true;
   }
 
   return pagePermission[action] === true;
@@ -99,12 +113,21 @@ export const canAccessRoute = (user, pathname, action = "canView") => {
 
 // Get user's accessible pages for redirect logic
 export const getAccessiblePages = (user) => {
-  if (!user || user.role !== "admin") {
+  if (!user) {
+    return [];
+  }
+
+  const isAuthorized =
+    user.role === "admin" ||
+    user.role === "employee" ||
+    Boolean(user.adminRoleId);
+
+  if (!isAuthorized) {
     return [];
   }
 
   // Super admin (no adminRoleId) has access to all pages
-  if (!user.adminRoleId) {
+  if (user.role === "admin" && !user.adminRoleId) {
     return [
       "dashboard",
       "lms-management",
@@ -132,7 +155,7 @@ export const getAccessiblePages = (user) => {
   const accessiblePages = [];
 
   for (const [page, permissions] of Object.entries(userPermissions)) {
-    if (permissions.canView) {
+    if (permissions && (permissions.canView || permissions === true)) {
       accessiblePages.push(page);
     }
   }

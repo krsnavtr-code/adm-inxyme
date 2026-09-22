@@ -22,8 +22,12 @@ export default function ProtectedAdminRoute({ children, action = "canView" }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check if user is admin
-  if (currentUser?.role !== "admin") {
+  // Check if user is authorized (admin, employee, or has adminRoleId)
+  const isAuthorized =
+    currentUser?.role === "admin" ||
+    currentUser?.role === "employee" ||
+    Boolean(currentUser?.adminRoleId);
+  if (!isAuthorized) {
     return <Navigate to="/unauthorized" replace />;
   }
 

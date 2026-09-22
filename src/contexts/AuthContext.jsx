@@ -421,7 +421,10 @@ export function AuthProvider({ children }) {
     currentUser,
     isAuthenticated: !!currentUser,
     isApproved: currentUser?.isApproved || false,
-    isAdmin: currentUser?.role === "admin",
+    isAdmin:
+      currentUser?.role === "admin" ||
+      currentUser?.role === "employee" ||
+      Boolean(currentUser?.adminRoleId),
     loading,
     login,
     register,

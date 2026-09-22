@@ -16,7 +16,10 @@ export default function PrivateRoute({
   const { currentUser, isAuthenticated, loading, logout } = useAuth();
   const location = useLocation();
   const userRole = currentUser?.role?.toLowerCase();
-  const isAdmin = userRole === 'admin';
+  const isAdmin =
+    userRole === 'admin' ||
+    userRole === 'employee' ||
+    Boolean(currentUser?.adminRoleId);
 
   if (loading) {
     return <LoadingSpinner />;
@@ -49,7 +52,9 @@ export default function PrivateRoute({
     const normalizedUserRole = userRole?.toLowerCase();
     const normalizedAllowedRoles = allowedRoles.map(role => role?.toLowerCase());
     
-    const hasAllowedRole = normalizedAllowedRoles.includes(normalizedUserRole);
+    const hasAllowedRole =
+      normalizedAllowedRoles.includes(normalizedUserRole) ||
+      (isAdmin && normalizedAllowedRoles.includes('admin'));
 
     if (!hasAllowedRole) {
       return <Navigate to="/unauthorized" replace />;

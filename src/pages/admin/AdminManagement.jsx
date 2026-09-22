@@ -57,23 +57,35 @@ const AdminManagement = () => {
       const existingPermission = prev.permissions.find((p) => p.page === page);
 
       if (existingPermission) {
+        const updatedVal = !existingPermission[action];
         return {
           ...prev,
-          permissions: prev.permissions.map((p) =>
-            p.page === page ? { ...p, [action]: !p[action] } : p,
-          ),
+          permissions: prev.permissions.map((p) => {
+            if (p.page !== page) return p;
+            if (action === "canView") {
+              return {
+                ...p,
+                canView: updatedVal,
+                canCreate: updatedVal,
+                canEdit: updatedVal,
+                canDelete: updatedVal,
+              };
+            }
+            return { ...p, [action]: updatedVal };
+          }),
         };
       } else {
+        const isEnable = true;
         return {
           ...prev,
           permissions: [
             ...prev.permissions,
             {
               page,
-              canView: action === "canView" ? true : false,
-              canCreate: action === "canCreate" ? true : false,
-              canEdit: action === "canEdit" ? true : false,
-              canDelete: action === "canDelete" ? true : false,
+              canView: isEnable,
+              canCreate: true,
+              canEdit: true,
+              canDelete: true,
             },
           ],
         };
@@ -134,11 +146,30 @@ const AdminManagement = () => {
     try {
       setLoading(true);
 
+      // Normalize permissions so that any selected page has full CRUD operations
+      const formattedPermissions = (roleForm.permissions || []).map((perm) => {
+        if (perm.canView) {
+          return {
+            ...perm,
+            canView: true,
+            canCreate: true,
+            canEdit: true,
+            canDelete: true,
+          };
+        }
+        return perm;
+      });
+
+      const payload = {
+        ...roleForm,
+        permissions: formattedPermissions,
+      };
+
       if (editingRole) {
-        await adminApi.updateAdminRole(editingRole._id, roleForm);
+        await adminApi.updateAdminRole(editingRole._id, payload);
         toast.success("Role updated successfully");
       } else {
-        await adminApi.createAdminRole(roleForm);
+        await adminApi.createAdminRole(payload);
         toast.success("Role created successfully");
       }
 

@@ -52,7 +52,7 @@ const AdminDashboard = () => {
 
   const hasPermission = (page) => {
     // Super admin (without adminRoleId) has access to all pages
-    if (!currentUser?.adminRoleId) {
+    if (currentUser?.role === "admin" && !currentUser?.adminRoleId) {
       return true;
     }
 
