@@ -39,7 +39,7 @@ Looking forward to your positive response.
 
 Thank you & Best Regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -74,7 +74,7 @@ We look forward to seeing you at the event!
 
 Warm regards,
 <strong style="font-weight: 600; color: #4f46e5;">Inxyme</strong>
-📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -102,7 +102,7 @@ We look forward to having your institution join us in empowering the next genera
 
 Warm regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -133,7 +133,7 @@ For details and bookings, feel free to contact:
 
 Warm regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
