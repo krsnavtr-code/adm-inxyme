@@ -10,6 +10,7 @@ export const routeToPermissionMap = {
   "/admin/course/:id": "courses",
   "/admin/users": "users",
   "/admin/contacts": "contacts",
+  "/admin/visitors": "contacts",
   "/admin/faqs": "faqs",
   "/admin/media": "image-gallery",
   "/admin/image-upload": "image-gallery",

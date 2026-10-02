@@ -8,6 +8,7 @@ import CoursesList from "./components/admin/courses/CoursesList";
 import CourseForm from "./components/admin/courses/CourseForm";
 import Users from "./components/admin/Users";
 import ContactsList from "./components/admin/ContactsList";
+import VisitorsPage from "./pages/admin/VisitorsPage";
 import AdminEnrollments from "./pages/admin/Enrollments";
 import PrivateRoute from "./components/PrivateRoute";
 import ProtectedAdminRoute from "./components/ProtectedAdminRoute";
@@ -166,6 +167,14 @@ export default function App() {
           element={
             <ProtectedAdminRoute>
               <ContactsList />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/visitors"
+          element={
+            <ProtectedAdminRoute>
+              <VisitorsPage />
             </ProtectedAdminRoute>
           }
         />
