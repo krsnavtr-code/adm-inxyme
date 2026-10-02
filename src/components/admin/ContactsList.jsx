@@ -43,6 +43,7 @@ const ContactsList = () => {
     date: "",
     course: "",
   });
+  const [selectedJourneyContact, setSelectedJourneyContact] = useState(null);
 
   const handleExport = async () => {
     try {
@@ -387,7 +388,7 @@ const ContactsList = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {contacts.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-4 text-center text-gray-500">
+                <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
                   No contact submissions found
                 </td>
               </tr>
@@ -423,28 +424,69 @@ const ContactsList = () => {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {contact.trackingId ? (
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-green-600">✓ Tracked</span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Visits: {contact.visitHistory?.length || 1}
-                        </div>
-                        {contact.visitHistory &&
-                          contact.visitHistory.length > 0 && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Last:{" "}
-                              {contact.visitHistory[
-                                contact.visitHistory.length - 1
-                              ]?.pageUrl || "N/A"}
-                            </div>
-                          )}
+                  <td className="px-6 py-4 text-sm text-gray-900 min-w-[210px]">
+                    <div className="flex flex-col gap-1.5">
+                      {/* Status Badges */}
+                      <div className="flex items-center flex-wrap gap-1">
+                        {contact.isPartial ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                            ⚡ Partial Lead
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            ✓ Tracked
+                          </span>
+                        )}
+
+                        {(contact.totalVisits > 1 || contact.isReturning) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                            🔁 {contact.totalVisits} Visits
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <span className="text-gray-400">Not tracked</span>
-                    )}
+
+                      {/* Visit Counts & Page Views */}
+                      <div className="flex items-center gap-2 text-xs text-gray-600">
+                        <span>
+                          Visits: <strong className="text-gray-900">{contact.totalVisits || 1}</strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Views: <strong className="text-gray-900">{contact.pageViews || contact.visitHistory?.length || 1}</strong>
+                        </span>
+                      </div>
+
+                      {/* Last Visited Page / Course URL */}
+                      {(contact.lastPageVisited || contact.pageUrl || (contact.visitHistory?.length > 0 && contact.visitHistory[contact.visitHistory.length - 1]?.pageUrl)) && (
+                        <div
+                          className="text-xs text-gray-500 max-w-[210px] truncate"
+                          title={contact.lastPageVisited || contact.pageUrl || contact.visitHistory[contact.visitHistory.length - 1]?.pageUrl}
+                        >
+                          <span className="font-medium text-gray-700">Last:</span>{" "}
+                          <span className="font-mono text-[11px] text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100">
+                            {contact.lastPageVisited || contact.pageUrl || contact.visitHistory[contact.visitHistory.length - 1]?.pageUrl}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Journey View Button */}
+                      {contact.visitHistory && contact.visitHistory.length > 0 ? (
+                        <div className="pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedJourneyContact(contact)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md transition-colors shadow-xs"
+                          >
+                            <span>👁️ View Journey</span>
+                            <span className="bg-indigo-200 text-indigo-900 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+                              {contact.visitHistory.length}
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-gray-400 italic">Single page submission</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-black">
                     <span className="text-blue-600">Course Name:</span>{" "}
@@ -649,6 +691,156 @@ const ContactsList = () => {
           </div>
         )}
       </div>
+
+      {/* Browsing Journey Modal */}
+      {selectedJourneyContact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col border border-gray-200 overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-100 flex justify-between items-start bg-gradient-to-r from-blue-50/80 to-indigo-50/80">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🗺️</span>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Visitor Journey & Activity
+                  </h3>
+                  {selectedJourneyContact.isPartial && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                      ⚡ Partial Lead (onBlur)
+                    </span>
+                  )}
+                  {(selectedJourneyContact.totalVisits > 1 || selectedJourneyContact.isReturning) && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                      🔁 Returning ({selectedJourneyContact.totalVisits} visits)
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 mt-1.5 flex items-center flex-wrap gap-2">
+                  <span className="font-semibold text-gray-900">{selectedJourneyContact.name || "Website Lead"}</span>
+                  {selectedJourneyContact.phone && (
+                    <span className="text-gray-500">• 📞 {selectedJourneyContact.phone}</span>
+                  )}
+                  {selectedJourneyContact.email && (
+                    <span className="text-gray-500">• ✉️ {selectedJourneyContact.email}</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedJourneyContact(null)}
+                className="w-8 h-8 rounded-full bg-white hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-colors shadow-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-3 gap-2 p-3 bg-gray-50 border-b border-gray-100 text-center text-xs">
+              <div className="bg-white p-2.5 rounded-lg border border-gray-200 shadow-xs">
+                <span className="text-gray-500 block text-[11px]">Total Visits</span>
+                <span className="text-base font-bold text-blue-600">
+                  {selectedJourneyContact.totalVisits || 1}
+                </span>
+              </div>
+              <div className="bg-white p-2.5 rounded-lg border border-gray-200 shadow-xs">
+                <span className="text-gray-500 block text-[11px]">Page Views</span>
+                <span className="text-base font-bold text-indigo-600">
+                  {selectedJourneyContact.pageViews || selectedJourneyContact.visitHistory?.length || 1}
+                </span>
+              </div>
+              <div className="bg-white p-2.5 rounded-lg border border-gray-200 shadow-xs">
+                <span className="text-gray-500 block text-[11px]">Tracking ID</span>
+                <span className="text-[11px] font-mono font-semibold text-gray-700 truncate block mt-0.5" title={selectedJourneyContact.trackingId || selectedJourneyContact.visitorId}>
+                  {selectedJourneyContact.trackingId || selectedJourneyContact.visitorId || "N/A"}
+                </span>
+              </div>
+            </div>
+
+            {/* Timeline of Visited Pages */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                Pages Visited Timeline ({selectedJourneyContact.visitHistory?.length || 0})
+              </h4>
+
+              {(!selectedJourneyContact.visitHistory || selectedJourneyContact.visitHistory.length === 0) ? (
+                <div className="text-center py-8 text-gray-400 text-sm">
+                  No browsing history recorded yet.
+                </div>
+              ) : (
+                <div className="relative pl-6 border-l-2 border-indigo-200 space-y-3.5 my-2">
+                  {selectedJourneyContact.visitHistory.map((step, idx) => (
+                    <div key={idx} className="relative group">
+                      <div className="absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full bg-indigo-600 border-2 border-white ring-2 ring-indigo-200" />
+                      <div className="bg-gray-50 hover:bg-indigo-50/40 transition-colors p-3 rounded-xl border border-gray-200">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className="flex-1">
+                            <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">
+                              Step {idx + 1}
+                            </span>
+                            <div className="text-sm font-semibold text-gray-900 mt-0.5">
+                              {step.pageTitle || (step.pageUrl === "/" ? "Home Page" : step.pageUrl)}
+                            </div>
+                            <div className="text-xs font-mono text-gray-500 mt-0.5 break-all">
+                              {step.pageUrl}
+                            </div>
+                          </div>
+                          {step.visitedAt && (
+                            <span className="text-[11px] text-gray-400 whitespace-nowrap bg-white px-2 py-0.5 rounded border border-gray-100">
+                              {format(new Date(step.visitedAt), "MMM d, h:mm a")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Quick Actions */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-gray-500">
+                Submitted:{" "}
+                <strong className="text-gray-700">
+                  {format(
+                    new Date(selectedJourneyContact.submittedAt || selectedJourneyContact.createdAt || Date.now()),
+                    "MMM d, yyyy h:mm a"
+                  )}
+                </strong>
+              </div>
+              <div className="flex items-center gap-2">
+                {selectedJourneyContact.phone && (
+                  <>
+                    <a
+                      href={`https://wa.me/${selectedJourneyContact.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
+                        `Hi ${selectedJourneyContact.name || "there"}, thank you for visiting Inxyme! How can we assist you with your learning goals?`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-xs transition-colors"
+                    >
+                      <span>💬</span> WhatsApp
+                    </a>
+                    <a
+                      href={`tel:${selectedJourneyContact.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg shadow-xs transition-colors"
+                    >
+                      <span>📞</span> Call
+                    </a>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedJourneyContact(null)}
+                  className="px-3.5 py-1.5 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg shadow-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
