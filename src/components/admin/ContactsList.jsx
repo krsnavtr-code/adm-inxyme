@@ -443,7 +443,21 @@ const ContactsList = () => {
                             🔁 {contact.totalVisits} Visits
                           </span>
                         )}
+
+                        {contact.isFingerprintMatched && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-violet-100 text-violet-800 border border-violet-200">
+                            🕵️ Incognito/FP
+                          </span>
+                        )}
                       </div>
+
+                      {/* Device info if available */}
+                      {contact.device?.os && (
+                        <div className="text-[11px] text-gray-500 flex items-center gap-1 truncate max-w-[210px]">
+                          <span>{contact.device.deviceType === "mobile" ? "📱" : "💻"}</span>
+                          <span>{contact.device.os} • {contact.device.browser}</span>
+                        </div>
+                      )}
 
                       {/* Visit Counts & Page Views */}
                       <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -755,6 +769,36 @@ const ContactsList = () => {
                 </span>
               </div>
             </div>
+
+            {/* Hardware Fingerprint & Device Bar */}
+            {(selectedJourneyContact.fingerprint || selectedJourneyContact.device?.os) && (
+              <div className="px-4 py-2 bg-indigo-50/50 border-b border-gray-100 text-xs flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <span className="text-sm">{selectedJourneyContact.device?.deviceType === "mobile" ? "📱" : "💻"}</span>
+                  <span className="font-semibold">
+                    {selectedJourneyContact.device?.os || "Device"} • {selectedJourneyContact.device?.browser || "Browser"}
+                  </span>
+                  {selectedJourneyContact.device?.screenResolution && (
+                    <span className="text-gray-400 font-mono text-[11px]">
+                      ({selectedJourneyContact.device.screenResolution})
+                    </span>
+                  )}
+                  {selectedJourneyContact.isFingerprintMatched && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                      🕵️ Incognito / Cache Cleared Matched
+                    </span>
+                  )}
+                </div>
+                {selectedJourneyContact.fingerprint && (
+                  <div className="flex items-center gap-1.5 bg-white px-2 py-0.5 rounded border border-gray-200">
+                    <span className="text-[10px] text-gray-400 font-semibold uppercase">Fingerprint:</span>
+                    <span className="font-mono text-[11px] text-indigo-600 font-bold" title={selectedJourneyContact.fingerprint}>
+                      {selectedJourneyContact.fingerprint}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Timeline of Visited Pages */}
             <div className="p-5 overflow-y-auto flex-1 space-y-3">

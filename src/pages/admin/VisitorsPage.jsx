@@ -233,6 +233,20 @@ export default function VisitorsPage() {
                                 {v.email}
                               </p>
                             )}
+                            {v.isFingerprintMatched && (
+                              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                🕵️ Incognito / FP Matched
+                              </span>
+                            )}
+                            {v.device?.os && (
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1 truncate">
+                                <span>{v.device.deviceType === "mobile" ? "📱" : "💻"}</span>
+                                <span>{v.device.os} • {v.device.browser}</span>
+                                {v.device.screenResolution && (
+                                  <span className="text-[10px] text-gray-400">({v.device.screenResolution})</span>
+                                )}
+                              </p>
+                            )}
                           </div>
                         ) : (
                           <div>
@@ -243,6 +257,17 @@ export default function VisitorsPage() {
                             <p className="text-[11px] font-mono text-gray-400 truncate max-w-[180px]">
                               {v.visitorId}
                             </p>
+                            {v.isFingerprintMatched && (
+                              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                🕵️ Incognito / FP Matched
+                              </span>
+                            )}
+                            {v.device?.os && (
+                              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1 truncate">
+                                <span>{v.device.deviceType === "mobile" ? "📱" : "💻"}</span>
+                                <span>{v.device.os} • {v.device.browser}</span>
+                              </p>
+                            )}
                           </div>
                         )}
                       </td>
@@ -352,6 +377,34 @@ export default function VisitorsPage() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* Device & Hardware Fingerprint Bar */}
+            <div className="p-3 bg-gray-50 dark:bg-gray-700/40 border-b border-gray-100 dark:border-gray-700 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{selectedVisitor.device?.deviceType === "mobile" ? "📱" : "💻"}</span>
+                <span className="font-semibold text-gray-800 dark:text-gray-200">
+                  {selectedVisitor.device?.os || "Device Details"} • {selectedVisitor.device?.browser || "Browser"}
+                </span>
+                {selectedVisitor.device?.screenResolution && (
+                  <span className="text-gray-400 font-mono text-[11px]">
+                    ({selectedVisitor.device.screenResolution})
+                  </span>
+                )}
+                {selectedVisitor.isFingerprintMatched && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                    🕵️ Identified Across Sessions
+                  </span>
+                )}
+              </div>
+              {selectedVisitor.fingerprint && (
+                <div className="flex items-center gap-1.5 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-md border border-gray-200 dark:border-gray-600">
+                  <span className="text-[10px] text-gray-400 font-semibold uppercase">Fingerprint:</span>
+                  <span className="font-mono text-[11px] text-indigo-600 dark:text-indigo-400 font-bold" title={selectedVisitor.fingerprint}>
+                    {selectedVisitor.fingerprint}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Timeline */}
