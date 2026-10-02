@@ -5,6 +5,7 @@ import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
 import { saveAs } from "file-saver";
+import { buildContactMagicUrl, buildWhatsAppMagicLink } from "../../utils/magicLink";
 
 const statusColors = {
   new: "bg-blue-100 text-blue-800",
@@ -537,8 +538,37 @@ const ContactsList = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-black">
-                    <span className="text-blue-600">Course Name:</span>{" "}
-                    {contact.courseTitle}
+                    <div>
+                      <span className="text-blue-600 font-medium">Course:</span>{" "}
+                      <span className="font-semibold">{contact.courseTitle || "General Enquiry"}</span>
+                    </div>
+
+                    {/* 09 - Pre-filled Magic Link Follow-up Actions */}
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      {contact.phone && (
+                        <a
+                          href={buildWhatsAppMagicLink(contact)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-green-600 hover:bg-green-700 active:bg-green-800 rounded-md shadow-xs transition-colors"
+                          title="Send follow-up WhatsApp message with pre-filled details"
+                        >
+                          <span>💬</span> WhatsApp Magic
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = buildContactMagicUrl(contact);
+                          navigator.clipboard.writeText(url);
+                          toast.success("Magic Link copied! 📋 (User details will be pre-filled)");
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-md shadow-xs transition-colors"
+                        title="Copy Pre-filled Magic Link to clipboard"
+                      >
+                        <span>🪄</span> Copy Link
+                      </button>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div>
@@ -886,19 +916,29 @@ const ContactsList = () => {
                   )}
                 </strong>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {selectedJourneyContact.phone && (
                   <>
                     <a
-                      href={`https://wa.me/${selectedJourneyContact.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                        `Hi ${selectedJourneyContact.name || "there"}, thank you for visiting Inxyme! How can we assist you with your learning goals?`
-                      )}`}
+                      href={buildWhatsAppMagicLink(selectedJourneyContact)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-xs transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg shadow-xs transition-colors"
+                      title="Send WhatsApp follow-up with pre-filled magic link"
                     >
-                      <span>💬</span> WhatsApp
+                      <span>🪄</span> WhatsApp Magic Link
                     </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const url = buildContactMagicUrl(selectedJourneyContact);
+                        navigator.clipboard.writeText(url);
+                        toast.success("Magic Link copied! 📋");
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg shadow-xs transition-colors"
+                    >
+                      <span>📋</span> Copy Magic Link
+                    </button>
                     <a
                       href={`tel:${selectedJourneyContact.phone}`}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg shadow-xs transition-colors"
