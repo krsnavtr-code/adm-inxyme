@@ -501,9 +501,24 @@ const getSecretContactData = async (
   }
 };
 
+/**
+ * Fetch Server-Side Tracking statistics (Meta CAPI & GA4 bypass metrics)
+ */
+const getServerTrackingStats = async () => {
+  try {
+    const response = await api.get("/api/visitors/server-tracking-stats");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching server tracking stats:", error);
+    return { success: false, totalEvents: 0, recentEvents: [] };
+  }
+};
+
 export {
   submitContactForm,
   updateContactStatus,
   getContacts,
   getSecretContactData,
+  getServerTrackingStats,
 };
+

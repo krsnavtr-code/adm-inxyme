@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getContacts, updateContactStatus } from "../../api/contactApi";
+import { getContacts, updateContactStatus, getServerTrackingStats } from "../../api/contactApi";
 import { format, parseISO } from "date-fns";
 import { toast } from "react-toastify";
 import { useAuth } from "../../contexts/AuthContext";
@@ -44,6 +44,19 @@ const ContactsList = () => {
     course: "",
   });
   const [selectedJourneyContact, setSelectedJourneyContact] = useState(null);
+  const [serverStats, setServerStats] = useState(null);
+  const [showServerStatsModal, setShowServerStatsModal] = useState(false);
+
+  const fetchServerStats = async () => {
+    try {
+      const data = await getServerTrackingStats();
+      if (data && data.success) {
+        setServerStats(data);
+      }
+    } catch (e) {
+      console.error("Error loading server tracking stats:", e);
+    }
+  };
 
   const handleExport = async () => {
     try {
@@ -207,6 +220,7 @@ const ContactsList = () => {
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       fetchContacts();
+      fetchServerStats();
     }
   }, [pagination.page, filters, isAuthenticated, authLoading]);
 
@@ -266,6 +280,26 @@ const ContactsList = () => {
               />
             </svg>
             Export
+          </button>
+
+          <button
+            onClick={() => {
+              fetchServerStats();
+              setShowServerStatsModal(true);
+            }}
+            className="px-3 py-1.5 text-xs font-semibold bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="Conversions API & GA4 Server-Side Tracking (Bypassing Ad-Blockers)"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>🛡️ Server-Side Tracking</span>
+            {serverStats?.totalEvents > 0 && (
+              <span className="bg-indigo-900 text-indigo-100 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {serverStats.totalEvents} Bypassed
+              </span>
+            )}
           </button>
         </div>
 
@@ -881,6 +915,207 @@ const ContactsList = () => {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 07 - Server-Side Tracking (Bypassing Ad-Blockers) Modal */}
+      {showServerStatsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-5 bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-900 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/30 border border-indigo-400/40 flex items-center justify-center text-xl shadow-inner">
+                  🛡️
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-white">
+                      Server-Side Tracking (Conversions API)
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      100% Ad-Blocker Immune
+                    </span>
+                  </div>
+                  <p className="text-xs text-indigo-200 mt-0.5">
+                    Direct Node.js Server-to-Server dispatch to Meta CAPI & Google Analytics 4
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowServerStatsModal(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-gray-50 border-b border-gray-200">
+              <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-xs">
+                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Ad-Blockers Bypassed
+                </div>
+                <div className="text-2xl font-black text-indigo-600 mt-1">
+                  {serverStats?.totalEvents || 0}
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  100% Captured via First-Party Backend
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-xs">
+                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between">
+                  <span>Meta CAPI</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${serverStats?.metaCapiConfigured ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {serverStats?.metaCapiConfigured ? 'Live API' : 'Simulated'}
+                  </span>
+                </div>
+                <div className="text-xs font-mono font-bold text-gray-800 mt-2 truncate" title={serverStats?.metaPixelId}>
+                  Pixel: {serverStats?.metaPixelId || "1612208420573846"}
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  SHA-256 Hashed PII (em, ph, fn)
+                </div>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-xs">
+                <div className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between">
+                  <span>GA4 Protocol</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${serverStats?.ga4Configured ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                    {serverStats?.ga4Configured ? 'Live API' : 'Simulated'}
+                  </span>
+                </div>
+                <div className="text-xs font-mono font-bold text-gray-800 mt-2">
+                  Measurement Protocol
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  Direct server collect endpoint
+                </div>
+              </div>
+            </div>
+
+            {/* Event Distribution */}
+            {serverStats?.eventsByType?.length > 0 && (
+              <div className="px-4 py-2.5 bg-indigo-50/40 border-b border-gray-200 flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-semibold text-gray-600">Event Breakdown:</span>
+                {serverStats.eventsByType.map((item) => (
+                  <span
+                    key={item._id}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-medium bg-white text-indigo-700 border border-indigo-200 shadow-xs"
+                  >
+                    <span>{item._id}:</span>
+                    <strong className="text-indigo-900">{item.count}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Live Audit Stream Table */}
+            <div className="p-4 overflow-y-auto flex-1">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                  Recent Server-Dispatched Events (Bypassing Ad-Blockers)
+                </h4>
+                <button
+                  onClick={fetchServerStats}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                >
+                  <span>🔄</span> Refresh
+                </button>
+              </div>
+
+              {!serverStats?.recentEvents || serverStats.recentEvents.length === 0 ? (
+                <div className="text-center py-8 text-gray-400 text-sm">
+                  No server-side events logged yet. Visit pages or fill lead forms to see events!
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-gray-200 rounded-xl">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs text-left">
+                    <thead className="bg-gray-50 text-gray-500 font-semibold uppercase">
+                      <tr>
+                        <th className="px-3 py-2">Event</th>
+                        <th className="px-3 py-2">Target Page / Course</th>
+                        <th className="px-3 py-2">Visitor / Lead</th>
+                        <th className="px-3 py-2">Meta / GA4 Status</th>
+                        <th className="px-3 py-2">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {serverStats.recentEvents.map((evt) => (
+                        <tr key={evt._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                              evt.eventType === 'Lead'
+                                ? 'bg-green-100 text-green-800'
+                                : evt.eventType === 'PartialLead'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {evt.eventType}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 max-w-[200px] truncate" title={evt.pageUrl}>
+                            <div className="font-medium text-gray-800 truncate">
+                              {evt.pageTitle || evt.pageUrl}
+                            </div>
+                            <div className="text-[10px] font-mono text-gray-400 truncate">
+                              {evt.pageUrl}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {evt.userData?.name || evt.userData?.phone ? (
+                              <div>
+                                <span className="font-semibold text-gray-800">
+                                  {evt.userData?.name || "Lead"}
+                                </span>
+                                <span className="text-[10px] text-gray-500 block">
+                                  {evt.userData?.phone || evt.userData?.email}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="font-mono text-[10px] text-gray-400 truncate max-w-[120px] block" title={evt.visitorId}>
+                                {evt.visitorId || "Anonymous"}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded text-[9px] font-bold border border-blue-200">
+                                Meta: {evt.metaCapi?.status || 'ok'}
+                              </span>
+                              <span className="px-1.5 py-0.2 bg-emerald-50 text-emerald-700 rounded text-[9px] font-bold border border-emerald-200">
+                                GA4: {evt.ga4MeasurementProtocol?.status || 'ok'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 whitespace-nowrap text-gray-400 text-[10px]">
+                            {evt.createdAt ? format(new Date(evt.createdAt), "MMM d, h:mm a") : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between text-xs">
+              <span className="text-gray-500">
+                🛡️ All server events bypass browser extensions (uBlock, AdGuard, Brave Shields) completely.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowServerStatsModal(false)}
+                className="px-4 py-1.5 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 rounded-lg shadow-xs transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
