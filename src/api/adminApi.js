@@ -161,3 +161,34 @@ export const getAvailablePages = async () => {
     throw error;
   }
 };
+
+export const getAllUsersWithAdminStatus = async (params = {}) => {
+  try {
+    const response = await axios.get("/admin/roles/all-users", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all users with admin status:", error);
+    throw error;
+  }
+};
+
+export const assignAdminRoleToExistingUser = async (payload) => {
+  try {
+    const response = await axios.post("/admin/roles/assign-user", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error assigning admin role to user:", error);
+    throw error;
+  }
+};
+
+export const revokeAdminUserRole = async (userId) => {
+  try {
+    const response = await axios.delete(`/admin/roles/users/${userId}/role`);
+    return response.data;
+  } catch (error) {
+    console.error("Error revoking admin user role:", error);
+    throw error;
+  }
+};
+
