@@ -70,6 +70,7 @@ const ReviewsPage = () => {
   // Video Player Modal State
   const [videoModalOpen, setVideoModalOpen] = useState(false);
   const [activeVideoReview, setActiveVideoReview] = useState(null);
+  const [videoError, setVideoError] = useState(false);
 
   // Determine Website Base URL for student share links
   const siteBaseUrl = useMemo(() => {
@@ -95,9 +96,17 @@ const ReviewsPage = () => {
   const getVideoUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    const apiHost = (
-      import.meta.env.VITE_API_BASE_URL || "https://www.inxyme.com"
-    ).replace(/\/api$/, "");
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+
+    let apiHost =
+      import.meta.env.VITE_API_URL ||
+      import.meta.env.VITE_API_BASE_URL ||
+      (isLocal ? "http://localhost:4002" : "https://www.inxyme.com");
+
+    apiHost = apiHost.replace(/\/api\/?$/, "").replace(/\/$/, "");
     return `${apiHost}${url.startsWith("/") ? "" : "/"}${url}`;
   };
 
@@ -770,6 +779,7 @@ const ReviewsPage = () => {
                   {isVideoReview && review.videoUrl && (
                     <div
                       onClick={() => {
+                        setVideoError(false);
                         setActiveVideoReview(review);
                         setVideoModalOpen(true);
                       }}
@@ -1033,14 +1043,72 @@ const ReviewsPage = () => {
             </div>
 
             {/* Video Player Area */}
-            <div className="bg-black aspect-video flex items-center justify-center">
-              <video
-                src={getVideoUrl(activeVideoReview.videoUrl)}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full object-contain"
-              />
+            <div className="bg-black min-h-[300px] max-h-[520px] aspect-video flex items-center justify-center relative overflow-hidden">
+              {videoError ? (
+                <div className="text-center p-6 text-white space-y-3">
+                  <AlertCircle className="w-10 h-10 text-amber-400 mx-auto" />
+                  <p className="text-sm font-semibold text-gray-200">
+                    Video file could not be loaded or played.
+                  </p>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto font-mono break-all">
+                    {getVideoUrl(activeVideoReview.videoUrl)}
+                  </p>
+                  <div className="flex items-center justify-center gap-3 pt-2">
+                    <a
+                      href={getVideoUrl(activeVideoReview.videoUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-sm transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Open Direct Link
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setVideoError(false);
+                        const v = document.getElementById("admin-review-video-player");
+                        if (v) {
+                          v.load();
+                          v.play().catch(() => {});
+                        }
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium border border-gray-700 transition-all"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <video
+                  id="admin-review-video-player"
+                  key={activeVideoReview._id}
+                  src={getVideoUrl(activeVideoReview.videoUrl)}
+                  controls
+                  autoPlay
+                  preload="auto"
+                  playsInline
+                  onLoadedMetadata={(e) => {
+                    const v = e.currentTarget;
+                    setVideoError(false);
+                    // Fix for Chrome/Chromium MediaRecorder WebM duration Infinity/0:00 bug
+                    if (v.duration === Infinity || isNaN(v.duration)) {
+                      v.currentTime = 1e101;
+                      v.ontimeupdate = function () {
+                        this.ontimeupdate = null;
+                        this.currentTime = 0;
+                        this.play().catch(() => {});
+                      };
+                    }
+                  }}
+                  onError={(e) => {
+                    console.error("Video load error:", e);
+                    setVideoError(true);
+                  }}
+                  className="w-full h-full object-contain"
+                />
+              )}
             </div>
 
             {/* Modal Footer / Review Info & Actions */}
