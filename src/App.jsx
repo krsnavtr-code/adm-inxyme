@@ -39,6 +39,7 @@ import Sprint from "./components/admin/lmsManagement/Sprint";
 import LmsManagement from "./components/admin/lmsManagement/LmsManagement";
 import Assessment from "./components/admin/lmsManagement/Assessment";
 import CandidatesPage from "./pages/admin/CandidatesPage";
+import ReviewsPage from "./pages/admin/ReviewsPage";
 import AdminLoginPage from "./pages/auth/AdminLoginPage";
 import { useAuth } from "./contexts/AuthContext";
 import { getAccessiblePages } from "./utils/adminPermissions";
@@ -67,6 +68,7 @@ const AdminRedirect = () => {
     "custom-email": "/admin/custom-email",
     redirects: "/admin/redirects",
     "document-verification": "/admin/document-verification",
+    reviews: "/admin/reviews",
   };
 
   if (!accessiblePages || accessiblePages.length === 0) {
@@ -443,6 +445,16 @@ export default function App() {
           element={
             <ProtectedAdminRoute>
               <LoginRecords />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        {/* Student Reviews Management */}
+        <Route
+          path="/admin/reviews"
+          element={
+            <ProtectedAdminRoute>
+              <ReviewsPage />
             </ProtectedAdminRoute>
           }
         />

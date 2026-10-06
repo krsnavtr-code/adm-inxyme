@@ -42,6 +42,7 @@ export const routeToPermissionMap = {
   "/admin/admin-management": "admin-management",
   "/admin/test-qa": "test-qa",
   "/admin/login-records": "dashboard",
+  "/admin/reviews": "reviews",
 };
 
 // Get the permission page for a given route
@@ -149,6 +150,7 @@ export const getAccessiblePages = (user) => {
       "custom-email",
       "redirects",
       "document-verification",
+      "reviews",
     ];
   }
 
