@@ -202,8 +202,8 @@ const ReviewsPage = () => {
           newStatus === "approved"
             ? "Review verified and approved! 🎉"
             : newStatus === "rejected"
-            ? "Review rejected"
-            : "Review marked as pending"
+              ? "Review rejected"
+              : "Review marked as pending"
         );
         fetchReviews(pagination.page);
         fetchStats();
@@ -414,11 +414,10 @@ const ReviewsPage = () => {
         {/* Pending Verification */}
         <div
           onClick={() => setActiveTab("pending")}
-          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${
-            activeTab === "pending"
+          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${activeTab === "pending"
               ? "border-amber-500 ring-2 ring-amber-200"
               : "border-gray-200 hover:border-amber-300"
-          }`}
+            }`}
         >
           <div>
             <div className="flex items-center gap-1.5">
@@ -442,11 +441,10 @@ const ReviewsPage = () => {
         {/* Approved & Verified */}
         <div
           onClick={() => setActiveTab("approved")}
-          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${
-            activeTab === "approved"
+          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${activeTab === "approved"
               ? "border-emerald-500 ring-2 ring-emerald-200"
               : "border-gray-200 hover:border-emerald-300"
-          }`}
+            }`}
         >
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -462,11 +460,10 @@ const ReviewsPage = () => {
         {/* Rejected */}
         <div
           onClick={() => setActiveTab("rejected")}
-          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${
-            activeTab === "rejected"
+          className={`bg-white rounded-xl p-5 border cursor-pointer transition-all shadow-sm flex items-center justify-between ${activeTab === "rejected"
               ? "border-rose-500 ring-2 ring-rose-200"
               : "border-gray-200 hover:border-rose-300"
-          }`}
+            }`}
         >
           <div>
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -512,21 +509,19 @@ const ReviewsPage = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id
                     ? "bg-indigo-600 text-white shadow-sm"
                     : "text-gray-600 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 {tab.label}
                 <span
-                  className={`text-xs px-2 py-0.5 rounded-full ${
-                    activeTab === tab.id
+                  className={`text-xs px-2 py-0.5 rounded-full ${activeTab === tab.id
                       ? "bg-white/20 text-white"
                       : tab.highlight
-                      ? "bg-amber-100 text-amber-800 font-bold"
-                      : "bg-gray-100 text-gray-600"
-                  }`}
+                        ? "bg-amber-100 text-amber-800 font-bold"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -607,18 +602,18 @@ const ReviewsPage = () => {
             selectedRatingFilter ||
             selectedTypeFilter !== "all" ||
             searchQuery) && (
-            <button
-              onClick={() => {
-                setSelectedCourseFilter("");
-                setSelectedRatingFilter("");
-                setSelectedTypeFilter("all");
-                setSearchQuery("");
-              }}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-auto"
-            >
-              Reset Filters
-            </button>
-          )}
+              <button
+                onClick={() => {
+                  setSelectedCourseFilter("");
+                  setSelectedRatingFilter("");
+                  setSelectedTypeFilter("all");
+                  setSearchQuery("");
+                }}
+                className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-auto"
+              >
+                Reset Filters
+              </button>
+            )}
         </div>
       </div>
 
@@ -668,13 +663,12 @@ const ReviewsPage = () => {
             return (
               <div
                 key={review._id}
-                className={`bg-white rounded-2xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between overflow-hidden ${
-                  isPending
+                className={`bg-white rounded-2xl border transition-all shadow-sm hover:shadow-md flex flex-col justify-between overflow-hidden ${isPending
                     ? "border-amber-300 ring-1 ring-amber-100"
                     : isApproved
-                    ? "border-emerald-200"
-                    : "border-gray-200 opacity-80"
-                }`}
+                      ? "border-emerald-200"
+                      : "border-gray-200 opacity-80"
+                  }`}
               >
                 {/* Card Top */}
                 <div className="p-5 space-y-3.5 flex-1">
@@ -689,11 +683,10 @@ const ReviewsPage = () => {
                         />
                       ) : (
                         <div
-                          className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 ${
-                            isVideoReview
+                          className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 ${isVideoReview
                               ? "bg-gradient-to-tr from-rose-500 to-purple-600"
                               : "bg-gradient-to-tr from-indigo-500 to-purple-600"
-                          }`}
+                            }`}
                         >
                           {review.studentName ? review.studentName.charAt(0).toUpperCase() : "S"}
                         </div>
@@ -762,11 +755,10 @@ const ReviewsPage = () => {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`w-4 h-4 ${
-                            star <= review.rating
+                          className={`w-4 h-4 ${star <= review.rating
                               ? "text-amber-400 fill-amber-400"
                               : "text-gray-200 fill-gray-100"
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -1070,7 +1062,7 @@ const ReviewsPage = () => {
                         const v = document.getElementById("admin-review-video-player");
                         if (v) {
                           v.load();
-                          v.play().catch(() => {});
+                          v.play().catch(() => { });
                         }
                       }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-white text-xs font-medium border border-gray-700 transition-all"
@@ -1098,7 +1090,7 @@ const ReviewsPage = () => {
                       v.ontimeupdate = function () {
                         this.ontimeupdate = null;
                         this.currentTime = 0;
-                        this.play().catch(() => {});
+                        this.play().catch(() => { });
                       };
                     }
                   }}
@@ -1121,8 +1113,8 @@ const ReviewsPage = () => {
                       activeVideoReview.status === "approved"
                         ? "text-emerald-600"
                         : activeVideoReview.status === "rejected"
-                        ? "text-rose-600"
-                        : "text-amber-600"
+                          ? "text-rose-600"
+                          : "text-amber-600"
                     }
                   >
                     {activeVideoReview.status.toUpperCase()}
