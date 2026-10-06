@@ -20,6 +20,11 @@ import {
   Award,
   AlertCircle,
   Check,
+  Video,
+  Play,
+  FileText,
+  Film,
+  X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import * as reviewApi from "../../api/reviewApi";
@@ -32,6 +37,8 @@ const ReviewsPage = () => {
     pending: 0,
     approved: 0,
     rejected: 0,
+    textCount: 0,
+    videoCount: 0,
     averageRating: 0,
   });
 
@@ -42,6 +49,7 @@ const ReviewsPage = () => {
   const [activeTab, setActiveTab] = useState("all"); // 'all' | 'pending' | 'approved' | 'rejected'
   const [selectedCourseFilter, setSelectedCourseFilter] = useState("");
   const [selectedRatingFilter, setSelectedRatingFilter] = useState("");
+  const [selectedTypeFilter, setSelectedTypeFilter] = useState("all"); // 'all' | 'text' | 'video'
   const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({
     page: 1,
@@ -51,13 +59,17 @@ const ReviewsPage = () => {
   });
 
   // Share Link Generator State
-  const [shareCourseSlug, setShareCourseSlug] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedVideoLink, setCopiedVideoLink] = useState(false);
 
   // Modal State for Note / Details
   const [selectedReview, setSelectedReview] = useState(null);
   const [adminNoteInput, setAdminNoteInput] = useState("");
   const [noteModalOpen, setNoteModalOpen] = useState(false);
+
+  // Video Player Modal State
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [activeVideoReview, setActiveVideoReview] = useState(null);
 
   // Determine Website Base URL for student share links
   const siteBaseUrl = useMemo(() => {
@@ -70,10 +82,24 @@ const ReviewsPage = () => {
     return "https://www.inxyme.com";
   }, []);
 
-  // Universal student review link
-  const currentShareLink = useMemo(() => {
+  // Universal student review links
+  const generalShareLink = useMemo(() => {
     return `${siteBaseUrl}/review`;
   }, [siteBaseUrl]);
+
+  const videoShareLink = useMemo(() => {
+    return `${siteBaseUrl}/review?type=video`;
+  }, [siteBaseUrl]);
+
+  // Construct absolute video URL
+  const getVideoUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    const apiHost = (
+      import.meta.env.VITE_API_BASE_URL || "https://www.inxyme.com"
+    ).replace(/\/api$/, "");
+    return `${apiHost}${url.startsWith("/") ? "" : "/"}${url}`;
+  };
 
   // Load Courses for dropdowns
   const fetchCourses = async () => {
@@ -117,6 +143,9 @@ const ReviewsPage = () => {
       if (selectedRatingFilter) {
         params.rating = selectedRatingFilter;
       }
+      if (selectedTypeFilter !== "all") {
+        params.reviewType = selectedTypeFilter;
+      }
       if (searchQuery.trim()) {
         params.search = searchQuery.trim();
       }
@@ -143,7 +172,13 @@ const ReviewsPage = () => {
 
   useEffect(() => {
     fetchReviews(1);
-  }, [activeTab, selectedCourseFilter, selectedRatingFilter, searchQuery]);
+  }, [
+    activeTab,
+    selectedCourseFilter,
+    selectedRatingFilter,
+    selectedTypeFilter,
+    searchQuery,
+  ]);
 
   // Handle Verify / Status update
   const handleUpdateStatus = async (id, newStatus, note = "") => {
@@ -166,10 +201,17 @@ const ReviewsPage = () => {
         if (noteModalOpen) {
           setNoteModalOpen(false);
         }
+        if (videoModalOpen && activeVideoReview?._id === id) {
+          setActiveVideoReview((prev) =>
+            prev ? { ...prev, status: newStatus } : null
+          );
+        }
       }
     } catch (err) {
       console.error("Error updating status:", err);
-      toast.error(err?.response?.data?.message || "Failed to update review status");
+      toast.error(
+        err?.response?.data?.message || "Failed to update review status"
+      );
     } finally {
       setActionLoadingId(null);
     }
@@ -187,6 +229,9 @@ const ReviewsPage = () => {
         toast.success("Review deleted successfully");
         fetchReviews(pagination.page);
         fetchStats();
+        if (videoModalOpen && activeVideoReview?._id === id) {
+          setVideoModalOpen(false);
+        }
       }
     } catch (err) {
       console.error("Error deleting review:", err);
@@ -196,18 +241,29 @@ const ReviewsPage = () => {
     }
   };
 
-  // Handle Copy Link
+  // Handle Copy General Link
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(currentShareLink);
+    navigator.clipboard.writeText(generalShareLink);
     setCopiedLink(true);
-    toast.success("Review link copied to clipboard!");
+    toast.success("Standard review link copied to clipboard!");
     setTimeout(() => setCopiedLink(false), 2500);
   };
 
+  // Handle Copy Video Link
+  const handleCopyVideoLink = () => {
+    navigator.clipboard.writeText(videoShareLink);
+    setCopiedVideoLink(true);
+    toast.success("Direct Video Review link copied to clipboard!");
+    setTimeout(() => setCopiedVideoLink(false), 2500);
+  };
+
   // Handle WhatsApp Share
-  const handleWhatsAppShare = () => {
+  const handleWhatsAppShare = (isVideo = false) => {
+    const link = isVideo ? videoShareLink : generalShareLink;
     const text = encodeURIComponent(
-      `Dear Student 🎓,\n\nPlease share your honest experience & review for Inxyme in just 1 click!\n\n👉 Give Review: ${currentShareLink}\n\nYour feedback helps us continuously improve. Thank you!\nTeam Inxyme`
+      isVideo
+        ? `Dear Student 🎓,\n\nPlease share your quick Video Review for Inxyme in just 1 click!\nYou can record directly or upload from your phone.\n\n👉 Record / Upload Video Review: ${link}\n\nYour feedback inspires thousands of future learners! Thank you.\nTeam Inxyme`
+        : `Dear Student 🎓,\n\nPlease share your honest experience & review for Inxyme in just 1 click!\n\n👉 Give Review: ${link}\n\nYour feedback helps us continuously improve. Thank you!\nTeam Inxyme`
     );
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
@@ -222,7 +278,7 @@ const ReviewsPage = () => {
             Student Reviews & Verification
           </h1>
           <p className="text-gray-600 text-sm mt-1">
-            Manage course reviews submitted by students, verify them for authenticity, and share 1-click review links.
+            Manage course reviews and video testimonials submitted by students, verify them for authenticity, and share 1-click links.
           </p>
         </div>
         <button
@@ -245,72 +301,83 @@ const ReviewsPage = () => {
             <div className="space-y-2 max-w-xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-indigo-100 border border-white/20">
                 <Share2 className="w-3.5 h-3.5" />
-                Quick Student Share Link
+                Quick Student Share Link (Written & Video)
               </span>
               <h2 className="text-xl md:text-2xl font-bold tracking-tight">
-                Send Review Link to Students (Max 2-3 Clicks)
+                Send Review Links to Students (Max 2-3 Clicks)
               </h2>
               <p className="text-indigo-200 text-sm">
-                Students will directly open this clean link, tap stars, select highlights, and submit their review in seconds without needing any complex login.
+                Students can write a review or record/upload a video review directly from their mobile or laptop in seconds.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-stretch sm:items-center gap-3">
-              {/* WhatsApp Button */}
+            <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-stretch sm:items-center gap-2.5">
+              {/* WhatsApp Video Review Share */}
               <button
-                onClick={handleWhatsAppShare}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg hover:shadow-emerald-500/25 transition-all text-sm"
+                onClick={() => handleWhatsAppShare(true)}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-medium shadow-lg hover:shadow-rose-500/25 transition-all text-xs sm:text-sm"
               >
-                <MessageCircle className="w-4 h-4" />
-                Share on WhatsApp
+                <Video className="w-4 h-4" />
+                Share Video Review (WhatsApp)
               </button>
 
-              {/* Copy Link Button */}
+              {/* WhatsApp Standard Share */}
               <button
-                onClick={handleCopyLink}
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-indigo-900 hover:bg-indigo-50 font-semibold shadow-lg transition-all text-sm"
+                onClick={() => handleWhatsAppShare(false)}
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium shadow-lg hover:shadow-emerald-500/25 transition-all text-xs sm:text-sm"
               >
-                {copiedLink ? (
-                  <>
-                    <Check className="w-4 h-4 text-emerald-600" />
-                    Copied!
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    Copy Share Link
-                  </>
-                )}
+                <MessageCircle className="w-4 h-4" />
+                Share Standard (WhatsApp)
               </button>
 
               {/* Open Preview Button */}
               <a
-                href={currentShareLink}
+                href={generalShareLink}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition-all text-sm"
+                className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium border border-white/20 transition-all text-xs sm:text-sm"
               >
                 <ExternalLink className="w-4 h-4" />
-                Open
+                Preview Form
               </a>
             </div>
           </div>
 
-          {/* Universal Link Bar */}
-          <div className="mt-6 pt-5 border-t border-white/15 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <span className="text-xs font-semibold text-indigo-200 uppercase tracking-wider whitespace-nowrap">
-              Direct Student Link:
-            </span>
-            <div className="flex-1 flex items-center bg-indigo-950/80 border border-white/20 rounded-lg px-3 py-2 text-indigo-100 text-xs font-mono overflow-x-auto truncate">
-              <span className="truncate">{currentShareLink}</span>
+          {/* Quick Copy Link Row */}
+          <div className="mt-5 pt-4 border-t border-white/15 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Standard Review Link */}
+            <div className="flex items-center bg-indigo-950/80 border border-white/20 rounded-lg p-1.5 text-xs">
+              <span className="text-[11px] font-semibold text-indigo-300 px-2 whitespace-nowrap">
+                Standard:
+              </span>
+              <span className="flex-1 truncate text-indigo-100 font-mono text-[11px]">
+                {generalShareLink}
+              </span>
+              <button
+                onClick={handleCopyLink}
+                className="px-2.5 py-1 bg-white/15 hover:bg-white/25 rounded-md text-[11px] font-medium text-white transition-all flex items-center gap-1"
+              >
+                {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {copiedLink ? "Copied" : "Copy"}
+              </button>
             </div>
-            <button
-              onClick={handleCopyLink}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-semibold text-white transition-all flex items-center justify-center gap-1.5"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              Copy
-            </button>
+
+            {/* Direct Video Review Link */}
+            <div className="flex items-center bg-indigo-950/80 border border-rose-400/30 rounded-lg p-1.5 text-xs">
+              <span className="text-[11px] font-semibold text-rose-300 px-2 whitespace-nowrap flex items-center gap-1">
+                <Video className="w-3 h-3 text-rose-400" /> Video Only:
+              </span>
+              <span className="flex-1 truncate text-indigo-100 font-mono text-[11px]">
+                {videoShareLink}
+              </span>
+              <button
+                onClick={handleCopyVideoLink}
+                className="px-2.5 py-1 bg-rose-500/30 hover:bg-rose-500/50 rounded-md text-[11px] font-medium text-white transition-all flex items-center gap-1"
+              >
+                {copiedVideoLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                {copiedVideoLink ? "Copied" : "Copy"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -324,6 +391,11 @@ const ReviewsPage = () => {
               Total Reviews
             </p>
             <p className="text-2xl font-bold text-gray-900 mt-1">{stats.total}</p>
+            <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500 font-medium">
+              <span>✍️ {stats.textCount || 0} Written</span>
+              <span>•</span>
+              <span className="text-rose-600 font-semibold">🎥 {stats.videoCount || 0} Video</span>
+            </div>
           </div>
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
             <BookOpen className="w-6 h-6" />
@@ -483,6 +555,17 @@ const ReviewsPage = () => {
             </span>
           </div>
 
+          {/* Format / Type Filter */}
+          <select
+            value={selectedTypeFilter}
+            onChange={(e) => setSelectedTypeFilter(e.target.value)}
+            className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="all">All Formats (Written & Video)</option>
+            <option value="video">🎥 Video Reviews Only</option>
+            <option value="text">✍️ Written Reviews Only</option>
+          </select>
+
           {/* Course filter */}
           <select
             value={selectedCourseFilter}
@@ -511,11 +594,15 @@ const ReviewsPage = () => {
             <option value="1">⭐ 1 Star</option>
           </select>
 
-          {(selectedCourseFilter || selectedRatingFilter || searchQuery) && (
+          {(selectedCourseFilter ||
+            selectedRatingFilter ||
+            selectedTypeFilter !== "all" ||
+            searchQuery) && (
             <button
               onClick={() => {
                 setSelectedCourseFilter("");
                 setSelectedRatingFilter("");
+                setSelectedTypeFilter("all");
                 setSearchQuery("");
               }}
               className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-auto"
@@ -543,13 +630,22 @@ const ReviewsPage = () => {
               ? "All caught up! There are no pending reviews waiting for verification."
               : "No reviews match your selected filter criteria. Try clearing filters or sharing the link with students."}
           </p>
-          <button
-            onClick={handleCopyLink}
-            className="mt-5 inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
-          >
-            <Copy className="w-4 h-4" />
-            Copy Share Link
-          </button>
+          <div className="mt-5 flex gap-2 justify-center">
+            <button
+              onClick={handleCopyLink}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+            >
+              <Copy className="w-4 h-4" />
+              Copy Review Link
+            </button>
+            <button
+              onClick={handleCopyVideoLink}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-medium shadow-sm transition-all"
+            >
+              <Video className="w-4 h-4" />
+              Copy Video Link
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -558,6 +654,7 @@ const ReviewsPage = () => {
             const isApproved = review.status === "approved";
             const isRejected = review.status === "rejected";
             const isActionLoading = actionLoadingId === review._id;
+            const isVideoReview = review.reviewType === "video";
 
             return (
               <div
@@ -571,11 +668,17 @@ const ReviewsPage = () => {
                 }`}
               >
                 {/* Card Top */}
-                <div className="p-5 space-y-4 flex-1">
+                <div className="p-5 space-y-3.5 flex-1">
                   {/* Status Banner / Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0">
+                      <div
+                        className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 ${
+                          isVideoReview
+                            ? "bg-gradient-to-tr from-rose-500 to-purple-600"
+                            : "bg-gradient-to-tr from-indigo-500 to-purple-600"
+                        }`}
+                      >
                         {review.studentName ? review.studentName.charAt(0).toUpperCase() : "S"}
                       </div>
                       <div>
@@ -595,23 +698,34 @@ const ReviewsPage = () => {
                     </div>
 
                     {/* Status Pill */}
-                    <div>
+                    <div className="flex flex-col items-end gap-1">
                       {isApproved && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                           <CheckCircle className="w-3.5 h-3.5" />
                           Verified
                         </span>
                       )}
                       {isPending && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 animate-pulse">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 animate-pulse">
                           <Clock className="w-3.5 h-3.5" />
                           Pending Review
                         </span>
                       )}
                       {isRejected && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
                           <XCircle className="w-3.5 h-3.5" />
                           Rejected
+                        </span>
+                      )}
+
+                      {/* Format Badge */}
+                      {isVideoReview ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <Video className="w-3 h-3 text-rose-600" /> Video
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                          <FileText className="w-3 h-3" /> Written
                         </span>
                       )}
                     </div>
@@ -644,6 +758,39 @@ const ReviewsPage = () => {
                     </span>
                   </div>
 
+                  {/* VIDEO PREVIEW BOX IF VIDEO REVIEW */}
+                  {isVideoReview && review.videoUrl && (
+                    <div
+                      onClick={() => {
+                        setActiveVideoReview(review);
+                        setVideoModalOpen(true);
+                      }}
+                      className="relative rounded-xl overflow-hidden bg-slate-950 aspect-video border border-slate-300 group cursor-pointer shadow-sm hover:ring-2 hover:ring-rose-500 transition-all"
+                    >
+                      <video
+                        src={getVideoUrl(review.videoUrl)}
+                        className="w-full h-full object-cover opacity-85 group-hover:opacity-100 transition-opacity"
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition-all">
+                        <div className="w-12 h-12 rounded-full bg-white text-rose-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-5 h-5 fill-rose-600 ml-0.5" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-white text-[10px] font-semibold bg-black/70 px-2 py-1 rounded-md backdrop-blur-xs">
+                        <span className="flex items-center gap-1">
+                          <Film className="w-3 h-3 text-rose-400" /> Watch Student Video
+                        </span>
+                        {review.videoDuration > 0 && (
+                          <span>
+                            {Math.floor(review.videoDuration / 60)}:
+                            {(review.videoDuration % 60).toString().padStart(2, "0")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Tags / Highlights */}
                   {review.tags && review.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
@@ -659,14 +806,10 @@ const ReviewsPage = () => {
                   )}
 
                   {/* Student Review Feedback Text */}
-                  {review.reviewText ? (
+                  {review.reviewText && (
                     <div className="relative pl-3 border-l-2 border-indigo-200 text-gray-700 text-sm italic bg-slate-50/50 p-2.5 rounded-r-lg">
                       "{review.reviewText}"
                     </div>
-                  ) : (
-                    <p className="text-xs text-gray-400 italic">
-                      No written feedback provided (Rating & tags only).
-                    </p>
                   )}
 
                   {/* Student Contact Info if available */}
@@ -736,6 +879,20 @@ const ReviewsPage = () => {
                   </div>
 
                   <div className="flex items-center gap-1">
+                    {/* If video review, quick play button */}
+                    {isVideoReview && review.videoUrl && (
+                      <button
+                        onClick={() => {
+                          setActiveVideoReview(review);
+                          setVideoModalOpen(true);
+                        }}
+                        title="Watch Video Review"
+                        className="p-1.5 text-rose-600 hover:text-rose-700 rounded-lg hover:bg-rose-50 transition-colors"
+                      >
+                        <Play className="w-4 h-4 fill-rose-600" />
+                      </button>
+                    )}
+
                     {/* Note button */}
                     <button
                       onClick={() => {
@@ -815,7 +972,7 @@ const ReviewsPage = () => {
                 value={adminNoteInput}
                 onChange={(e) => setAdminNoteInput(e.target.value)}
                 rows={4}
-                placeholder="e.g. Verified via WhatsApp screenshot, enrolled in batch #4..."
+                placeholder="e.g. Verified via WhatsApp call, enrolled in batch #4..."
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
@@ -834,6 +991,102 @@ const ReviewsPage = () => {
               >
                 Save Note
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Player Modal */}
+      {videoModalOpen && activeVideoReview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center font-bold text-sm">
+                  {activeVideoReview.studentName?.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
+                    {activeVideoReview.studentName} — Video Review
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {activeVideoReview.courseName || "Inxyme Course"} • Rating: ⭐ {activeVideoReview.rating}/5
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setVideoModalOpen(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video Player Area */}
+            <div className="bg-black aspect-video flex items-center justify-center">
+              <video
+                src={getVideoUrl(activeVideoReview.videoUrl)}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            {/* Modal Footer / Review Info & Actions */}
+            <div className="p-4 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-gray-100">
+              <div>
+                <span className="text-xs text-gray-500">
+                  Status:{" "}
+                  <strong
+                    className={
+                      activeVideoReview.status === "approved"
+                        ? "text-emerald-600"
+                        : activeVideoReview.status === "rejected"
+                        ? "text-rose-600"
+                        : "text-amber-600"
+                    }
+                  >
+                    {activeVideoReview.status.toUpperCase()}
+                  </strong>
+                </span>
+                {activeVideoReview.reviewText && (
+                  <p className="text-xs text-gray-600 italic mt-0.5 line-clamp-2">
+                    "{activeVideoReview.reviewText}"
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {activeVideoReview.status !== "approved" && (
+                  <button
+                    onClick={() => handleUpdateStatus(activeVideoReview._id, "approved")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Verify & Approve
+                  </button>
+                )}
+
+                {activeVideoReview.status !== "rejected" && (
+                  <button
+                    onClick={() => handleUpdateStatus(activeVideoReview._id, "rejected")}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 rounded-lg text-xs font-medium transition-all"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Reject
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setVideoModalOpen(false)}
+                  className="px-3.5 py-2 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
