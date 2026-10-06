@@ -672,15 +672,23 @@ const ReviewsPage = () => {
                   {/* Status Banner / Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 ${
-                          isVideoReview
-                            ? "bg-gradient-to-tr from-rose-500 to-purple-600"
-                            : "bg-gradient-to-tr from-indigo-500 to-purple-600"
-                        }`}
-                      >
-                        {review.studentName ? review.studentName.charAt(0).toUpperCase() : "S"}
-                      </div>
+                      {review.studentPhoto ? (
+                        <img
+                          src={getVideoUrl(review.studentPhoto)}
+                          alt={review.studentName}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-indigo-200 shadow-sm flex-shrink-0"
+                        />
+                      ) : (
+                        <div
+                          className={`w-10 h-10 rounded-full text-white font-bold flex items-center justify-center text-sm shadow-sm flex-shrink-0 ${
+                            isVideoReview
+                              ? "bg-gradient-to-tr from-rose-500 to-purple-600"
+                              : "bg-gradient-to-tr from-indigo-500 to-purple-600"
+                          }`}
+                        >
+                          {review.studentName ? review.studentName.charAt(0).toUpperCase() : "S"}
+                        </div>
+                      )}
                       <div>
                         <h4 className="font-semibold text-gray-900 text-base leading-snug">
                           {review.studentName}
