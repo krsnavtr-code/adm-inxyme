@@ -1,10 +1,28 @@
 import axios from "axios";
 
-const LANDING_BASE_URL =
-  import.meta.env.VITE_LANDING_API_URL || "http://localhost:5006/api";
+const isBrowser = typeof window !== "undefined";
+const isLocalhost =
+  isBrowser &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+// Determine Base URL:
+// 1. Explicit env variable if defined (VITE_LANDING_API_URL)
+// 2. Local development fallback: http://localhost:5006/api
+// 3. Production fallback: https://sap.inxyme.com/api (proxied via wildcard nginx to port 5006)
+const getLandingBaseUrl = () => {
+  if (import.meta.env.VITE_LANDING_API_URL) {
+    return import.meta.env.VITE_LANDING_API_URL;
+  }
+  if (isLocalhost) {
+    return "http://localhost:5006/api";
+  }
+  // Production fallback on inxyme.com
+  return "https://sap.inxyme.com/api";
+};
 
 const landingClient = axios.create({
-  baseURL: LANDING_BASE_URL,
+  baseURL: getLandingBaseUrl(),
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
