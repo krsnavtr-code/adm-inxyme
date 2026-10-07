@@ -40,9 +40,14 @@ export const routeToPermissionMap = {
   "/admin/lms/career": "lms-management",
   "/admin/candidates": "candidates",
   "/admin/admin-management": "admin-management",
-  "/admin/test-qa": "test-qa",
   "/admin/login-records": "dashboard",
   "/admin/reviews": "reviews",
+  "/admin/landing/leads": "contacts",
+  "/admin/landing/partial-leads": "contacts",
+  "/admin/landing/payments": "payments",
+  "/admin/landing/visitors": "contacts",
+  "/admin/landing/page-views": "contacts",
+  "/admin/landing/server-logs": "contacts",
 };
 
 // Get the permission page for a given route

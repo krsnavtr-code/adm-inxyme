@@ -41,6 +41,12 @@ import Assessment from "./components/admin/lmsManagement/Assessment";
 import CandidatesPage from "./pages/admin/CandidatesPage";
 import ReviewsPage from "./pages/admin/ReviewsPage";
 import AdminLoginPage from "./pages/auth/AdminLoginPage";
+import LandingLeadsPage from "./pages/admin/landing/LandingLeadsPage";
+import PartialLeadsPage from "./pages/admin/landing/PartialLeadsPage";
+import LandingPaymentsPage from "./pages/admin/landing/LandingPaymentsPage";
+import LandingVisitorsPage from "./pages/admin/landing/LandingVisitorsPage";
+import LandingPageViewsPage from "./pages/admin/landing/LandingPageViewsPage";
+import ServerTrackingLogsPage from "./pages/admin/landing/ServerTrackingLogsPage";
 import { useAuth } from "./contexts/AuthContext";
 import { getAccessiblePages } from "./utils/adminPermissions";
 
@@ -177,6 +183,56 @@ export default function App() {
           element={
             <ProtectedAdminRoute>
               <VisitorsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        {/* Landing Page Tracking Routes */}
+        <Route
+          path="/admin/landing/leads"
+          element={
+            <ProtectedAdminRoute>
+              <LandingLeadsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/landing/partial-leads"
+          element={
+            <ProtectedAdminRoute>
+              <PartialLeadsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/landing/payments"
+          element={
+            <ProtectedAdminRoute>
+              <LandingPaymentsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/landing/visitors"
+          element={
+            <ProtectedAdminRoute>
+              <LandingVisitorsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/landing/page-views"
+          element={
+            <ProtectedAdminRoute>
+              <LandingPageViewsPage />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/landing/server-logs"
+          element={
+            <ProtectedAdminRoute>
+              <ServerTrackingLogsPage />
             </ProtectedAdminRoute>
           }
         />
