@@ -35,6 +35,8 @@ import MediaMentionList from "./pages/admin/MediaMentionList";
 import MediaMentionForm from "./pages/admin/MediaMentionForm";
 import AwardList from "./pages/admin/AwardList";
 import AwardForm from "./pages/admin/AwardForm";
+import SuccessStoryList from "./pages/admin/SuccessStoryList";
+import SuccessStoryForm from "./pages/admin/SuccessStoryForm";
 import Sprint from "./components/admin/lmsManagement/Sprint";
 import LmsManagement from "./components/admin/lmsManagement/LmsManagement";
 import Assessment from "./components/admin/lmsManagement/Assessment";
@@ -75,6 +77,7 @@ const AdminRedirect = () => {
     redirects: "/admin/redirects",
     "document-verification": "/admin/document-verification",
     reviews: "/admin/reviews",
+    "success-stories": "/admin/success-stories",
   };
 
   if (!accessiblePages || accessiblePages.length === 0) {
@@ -369,6 +372,32 @@ export default function App() {
           element={
             <ProtectedAdminRoute action="canEdit">
               <AwardForm />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        {/* Success Stories Admin Routes */}
+        <Route
+          path="/admin/success-stories"
+          element={
+            <ProtectedAdminRoute>
+              <SuccessStoryList />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/success-stories/new"
+          element={
+            <ProtectedAdminRoute action="canCreate">
+              <SuccessStoryForm />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/success-stories/edit/:id"
+          element={
+            <ProtectedAdminRoute action="canEdit">
+              <SuccessStoryForm />
             </ProtectedAdminRoute>
           }
         />
