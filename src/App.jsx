@@ -37,6 +37,8 @@ import AwardList from "./pages/admin/AwardList";
 import AwardForm from "./pages/admin/AwardForm";
 import SuccessStoryList from "./pages/admin/SuccessStoryList";
 import SuccessStoryForm from "./pages/admin/SuccessStoryForm";
+import NewsEventList from "./pages/admin/NewsEventList";
+import NewsEventForm from "./pages/admin/NewsEventForm";
 import Sprint from "./components/admin/lmsManagement/Sprint";
 import LmsManagement from "./components/admin/lmsManagement/LmsManagement";
 import Assessment from "./components/admin/lmsManagement/Assessment";
@@ -78,6 +80,7 @@ const AdminRedirect = () => {
     "document-verification": "/admin/document-verification",
     reviews: "/admin/reviews",
     "success-stories": "/admin/success-stories",
+    "news-events": "/admin/news-events",
   };
 
   if (!accessiblePages || accessiblePages.length === 0) {
@@ -398,6 +401,32 @@ export default function App() {
           element={
             <ProtectedAdminRoute action="canEdit">
               <SuccessStoryForm />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        {/* News & Events Admin Routes */}
+        <Route
+          path="/admin/news-events"
+          element={
+            <ProtectedAdminRoute>
+              <NewsEventList />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/news-events/new"
+          element={
+            <ProtectedAdminRoute action="canCreate">
+              <NewsEventForm />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/news-events/edit/:id"
+          element={
+            <ProtectedAdminRoute action="canEdit">
+              <NewsEventForm />
             </ProtectedAdminRoute>
           }
         />

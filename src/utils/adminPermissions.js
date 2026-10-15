@@ -30,6 +30,9 @@ export const routeToPermissionMap = {
   "/admin/success-stories": "blog",
   "/admin/success-stories/new": "blog",
   "/admin/success-stories/edit/:id": "blog",
+  "/admin/news-events": "blog",
+  "/admin/news-events/new": "blog",
+  "/admin/news-events/edit/:id": "blog",
   "/admin/email-records": "custom-email",
   "/admin/send-brochure": "send-brochure",
   "/admin/send-proposal": "send-proposal",
@@ -160,6 +163,7 @@ export const getAccessiblePages = (user) => {
       "document-verification",
       "reviews",
       "success-stories",
+      "news-events",
     ];
   }
 
