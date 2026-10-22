@@ -18,6 +18,7 @@ export const routeToPermissionMap = {
   "/admin/enrollments": "enrollments",
   "/admin/payments": "payments",
   "/admin/payments/:id": "payments",
+  "/admin/payment-links": "payments",
   "/admin/blog": "blog",
   "/admin/blog/new": "blog",
   "/admin/blog/edit/:id": "blog",

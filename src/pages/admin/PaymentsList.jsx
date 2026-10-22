@@ -56,12 +56,20 @@ export default function PaymentsList() {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8">
-      <div className="sm:flex sm:items-center">
+      <div className="sm:flex sm:items-center sm:justify-between border-b border-gray-200 pb-5">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Payment Records</h1>
           <p className="mt-2 text-sm text-gray-700">
             A list of all direct payments received through the payment form.
           </p>
+        </div>
+        <div className="mt-4 sm:mt-0 flex items-center gap-3">
+          <Link
+            to="/admin/payment-links"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-xl shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none transition-colors"
+          >
+            + Create / View Payment Links
+          </Link>
         </div>
       </div>
       <div className="mt-8 flex flex-col">

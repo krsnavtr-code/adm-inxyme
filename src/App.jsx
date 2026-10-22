@@ -19,6 +19,7 @@ import ImageGallery from "./components/admin/ImageGallery";
 import MediaGallery from "./pages/admin/MediaGallery";
 import PaymentsList from "./pages/admin/PaymentsList";
 import PaymentDetails from "./pages/admin/PaymentDetails";
+import PaymentLinksPage from "./pages/admin/PaymentLinksPage";
 import SendBrochure from "./pages/admin/SendBrochure";
 import SendProposal from "./pages/admin/SendProposal";
 import EmailRecords from "./pages/admin/EmailRecords";
@@ -289,6 +290,14 @@ export default function App() {
           element={
             <ProtectedAdminRoute>
               <PaymentsList />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/payment-links"
+          element={
+            <ProtectedAdminRoute>
+              <PaymentLinksPage />
             </ProtectedAdminRoute>
           }
         />
