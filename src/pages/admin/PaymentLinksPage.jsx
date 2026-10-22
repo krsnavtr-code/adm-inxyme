@@ -516,12 +516,23 @@ export default function PaymentLinksPage() {
                           <MessageCircle className="w-4 h-4" />
                         </button>
 
-                        {/* Open in new tab */}
+                        {/* Open Localhost for testing */}
+                        <a
+                          href={`http://localhost:3000/pay/${link.linkId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Test on Localhost:3000 (Requires local Next.js dev server)"
+                          className="px-2 py-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                        >
+                          Local:3000
+                        </a>
+
+                        {/* Open in new tab (Live) */}
                         <a
                           href={link.paymentUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          title="Open Link"
+                          title="Open Live Link (https://www.inxyme.com)"
                           className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -872,6 +883,28 @@ export default function PaymentLinksPage() {
               </button>
             </div>
 
+            {/* Local vs Live Notice */}
+            <div className="bg-amber-50/80 border border-amber-200 rounded-2xl p-3.5 text-left mb-5 text-xs text-amber-900">
+              <div className="font-bold flex items-center gap-1.5 mb-1 text-amber-950">
+                <span>ℹ️ Important: Live vs Local Testing</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-relaxed mb-2.5">
+                The production link (<code className="bg-amber-100 px-1 py-0.5 rounded text-amber-950 font-mono">https://www.inxyme.com/pay/...</code>) is for sending to students once your Next.js app is deployed to the live server.
+              </p>
+              <div className="flex items-center justify-between pt-2 border-t border-amber-200/80">
+                <span className="text-[11px] font-semibold text-amber-900">Testing on this computer?</span>
+                <a
+                  href={`http://localhost:3000/pay/${createdLinkData.linkId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open on Localhost:3000
+                </a>
+              </div>
+            </div>
+
             {/* Quick Share Buttons */}
             <div className="grid grid-cols-2 gap-3 mb-4">
               <button
@@ -886,7 +919,7 @@ export default function PaymentLinksPage() {
                 rel="noopener noreferrer"
                 className="py-2.5 px-4 border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
               >
-                <ExternalLink className="w-4 h-4" /> Test Open Page
+                <ExternalLink className="w-4 h-4" /> Open Live Link
               </a>
             </div>
 
