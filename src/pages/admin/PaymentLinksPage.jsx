@@ -516,17 +516,6 @@ export default function PaymentLinksPage() {
                           <MessageCircle className="w-4 h-4" />
                         </button>
 
-                        {/* Open Localhost for testing */}
-                        <a
-                          href={`http://localhost:3000/pay/${link.linkId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Test on Localhost:3000 (Requires local Next.js dev server)"
-                          className="px-2 py-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
-                        >
-                          Local:3000
-                        </a>
-
                         {/* Open in new tab (Live) */}
                         <a
                           href={link.paymentUrl}
