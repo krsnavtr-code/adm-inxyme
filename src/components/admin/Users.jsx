@@ -716,7 +716,32 @@ const Users = () => {
                           <div className="text-sm font-medium text-gray-900">
                             {user.fullname || "N/A"}
                           </div>
-                          {/* Enrolled Course name */}
+                          {/* Enrolled Courses Badges */}
+                          {Array.isArray(user.enrolledCourses) && user.enrolledCourses.length > 0 ? (
+                            <div className="mt-1 flex flex-wrap gap-1 max-w-xs">
+                              {user.enrolledCourses.slice(0, 2).map((c, idx) => (
+                                <span
+                                  key={c._id || idx}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700 border border-indigo-100 max-w-[130px] truncate"
+                                  title={c.title || (typeof c === "string" ? "Course" : "Enrolled Course")}
+                                >
+                                  {c.title || (typeof c === "string" ? "Enrolled Course" : "Course")}
+                                </span>
+                              ))}
+                              {user.enrolledCourses.length > 2 && (
+                                <span
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600"
+                                  title={user.enrolledCourses.slice(2).map((c) => c.title || "Course").join(", ")}
+                                >
+                                  +{user.enrolledCourses.length - 2} more
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-gray-400 block mt-0.5">
+                              0 Courses
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
