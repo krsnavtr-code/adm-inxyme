@@ -42,6 +42,7 @@ import NewsEventList from "./pages/admin/NewsEventList";
 import NewsEventForm from "./pages/admin/NewsEventForm";
 import Sprint from "./components/admin/lmsManagement/Sprint";
 import LmsManagement from "./components/admin/lmsManagement/LmsManagement";
+import BatchesManagement from "./components/admin/lmsManagement/BatchesManagement";
 import Assessment from "./components/admin/lmsManagement/Assessment";
 import CandidatesPage from "./pages/admin/CandidatesPage";
 import ReviewsPage from "./pages/admin/ReviewsPage";
@@ -62,6 +63,7 @@ const AdminRedirect = () => {
   const pageToRouteMap = {
     dashboard: "/admin/dashboard",
     "lms-management": "/admin/lms-management",
+    batches: "/admin/lms/batches",
     "test-qa": "/admin/test-qa",
     courses: "/admin/courses",
     "send-brochure": "/admin/send-brochure",
@@ -504,8 +506,20 @@ export default function App() {
           }
         />
         <Route
+          path="/admin/lms/batches"
+          element={
+            <ProtectedAdminRoute>
+              <BatchesManagement />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/batches"
+          element={<Navigate to="/admin/lms/batches" replace />}
+        />
+        <Route
           path="/admin/lms"
-          element={<Navigate to="create-sprint" replace />}
+          element={<Navigate to="batches" replace />}
         />
         <Route
           path="/admin/lms/create-sprint"

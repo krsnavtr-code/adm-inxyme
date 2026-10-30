@@ -108,3 +108,27 @@ export const enrollInBatch = async (batchId, userId) => {
     throw error;
   }
 };
+
+// Get all enrolled users (teachers and students) for a specific course
+export const getCourseEnrolledUsers = async (courseId) => {
+  try {
+    const response = await axios.get(`/batches/course/${courseId}/enrolled-users`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching course enrolled users:", error);
+    throw error;
+  }
+};
+
+// Assign or update students in a batch
+export const assignStudentsToBatch = async (batchId, studentIds) => {
+  try {
+    const response = await axios.post(`/batches/${batchId}/assign-students`, {
+      studentIds,
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error assigning students to batch:", error);
+    throw error;
+  }
+};
