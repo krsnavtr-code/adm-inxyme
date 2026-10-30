@@ -79,8 +79,8 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="flex h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 text-gray-900">
+      <div className="flex h-screen bg-gray-100 text-gray-900">
         {/* Sidebar */}
         <div className="pb-8 bg-indigo-800 text-white w-64 flex-shrink-0 flex flex-col h-screen">
           <div className="p-4 flex-shrink-0">

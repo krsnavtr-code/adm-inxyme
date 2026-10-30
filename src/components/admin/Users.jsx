@@ -561,6 +561,7 @@ const Users = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search name or email..."
+                style={{ colorScheme: "light" }}
                 className="w-full pl-8 pr-8 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               />
               {searchTerm && (
@@ -584,6 +585,7 @@ const Users = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ colorScheme: "light" }}
               className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
             >
               <option value="all" className="bg-white text-gray-900">All Status</option>
@@ -600,6 +602,7 @@ const Users = () => {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
+              style={{ colorScheme: "light" }}
               className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer capitalize"
             >
               <option value="all" className="bg-white text-gray-900">All Roles</option>
@@ -619,6 +622,7 @@ const Users = () => {
             <select
               value={lmsStatusFilter}
               onChange={(e) => setLmsStatusFilter(e.target.value)}
+              style={{ colorScheme: "light" }}
               className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
             >
               <option value="all" className="bg-white text-gray-900">All LMS Status</option>
