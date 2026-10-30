@@ -547,7 +547,7 @@ const Users = () => {
       </div>
 
       {/* Filters: Search, Status, Role, LMS Status */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6 [color-scheme:light]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search Filter */}
           <div>
@@ -561,7 +561,7 @@ const Users = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search name or email..."
-                className="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                className="w-full pl-8 pr-8 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
               />
               {searchTerm && (
                 <button
@@ -584,11 +584,11 @@ const Users = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all" className="bg-white text-gray-900">All Status</option>
+              <option value="active" className="bg-white text-gray-900">Active</option>
+              <option value="inactive" className="bg-white text-gray-900">Inactive</option>
             </select>
           </div>
 
@@ -600,11 +600,11 @@ const Users = () => {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white capitalize"
+              className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer capitalize"
             >
-              <option value="all">All Roles</option>
+              <option value="all" className="bg-white text-gray-900">All Roles</option>
               {availableRoles.map((role) => (
-                <option key={role} value={role} className="capitalize">
+                <option key={role} value={role} className="bg-white text-gray-900 capitalize">
                   {role.charAt(0).toUpperCase() + role.slice(1)}
                 </option>
               ))}
@@ -619,11 +619,11 @@ const Users = () => {
             <select
               value={lmsStatusFilter}
               onChange={(e) => setLmsStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+              className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none cursor-pointer"
             >
-              <option value="all">All LMS Status</option>
-              <option value="approved">Approved</option>
-              <option value="not_approved">Not Approved</option>
+              <option value="all" className="bg-white text-gray-900">All LMS Status</option>
+              <option value="approved" className="bg-white text-gray-900">Approved</option>
+              <option value="not_approved" className="bg-white text-gray-900">Not Approved</option>
             </select>
           </div>
         </div>
