@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import userApi from "../../api/userApi";
-import { FaEdit, FaKey, FaTrash, FaBook } from "react-icons/fa";
+import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter } from "react-icons/fa";
 import EnrollUserModal from "./EnrollUserModal";
 
 // Modal components
@@ -276,6 +276,72 @@ const Users = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingDiscountId, setEditingDiscountId] = useState(null);
+
+  // Filter states: Status, Role, LMS Status, Search
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [lmsStatusFilter, setLmsStatusFilter] = useState("all");
+
+  // Extract all available roles dynamically, ensuring default roles exist
+  const availableRoles = useMemo(() => {
+    const roles = new Set(["student", "teacher", "admin"]);
+    users.forEach((u) => {
+      if (u.role) roles.add(u.role.toLowerCase());
+    });
+    return Array.from(roles);
+  }, [users]);
+
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setRoleFilter("all");
+    setLmsStatusFilter("all");
+  };
+
+  const hasActiveFilters =
+    searchTerm.trim() !== "" ||
+    statusFilter !== "all" ||
+    roleFilter !== "all" ||
+    lmsStatusFilter !== "all";
+
+  // Filtered users calculation
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      // 1. Search filter: matches name or email
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase().trim();
+        const fullname = user.fullname ? String(user.fullname).toLowerCase() : "";
+        const email = user.email ? String(user.email).toLowerCase() : "";
+        if (!fullname.includes(query) && !email.includes(query)) {
+          return false;
+        }
+      }
+
+      // 2. Status filter: active / inactive
+      if (statusFilter !== "all") {
+        const isActive = Boolean(user.isActive);
+        if (statusFilter === "active" && !isActive) return false;
+        if (statusFilter === "inactive" && isActive) return false;
+      }
+
+      // 3. Role filter: student / teacher / admin / etc.
+      if (roleFilter !== "all") {
+        const userRole = user.role ? String(user.role).toLowerCase() : "";
+        if (userRole !== roleFilter.toLowerCase()) return false;
+      }
+
+      // 4. LMS Status filter: approved / not_approved
+      if (lmsStatusFilter !== "all") {
+        const isApproved = Boolean(user.isApproved);
+        if (lmsStatusFilter === "approved" && !isApproved) return false;
+        if (lmsStatusFilter === "not_approved" && isApproved) return false;
+      }
+
+      return true;
+    });
+  }, [users, searchTerm, statusFilter, roleFilter, lmsStatusFilter]);
   // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
@@ -444,8 +510,20 @@ const Users = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Users Management</h2>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Users Management
+            <span className="text-sm font-normal text-gray-500 ml-3">
+              ({filteredUsers.length}
+              {filteredUsers.length !== users.length ? ` of ${users.length}` : ""}{" "}
+              user{filteredUsers.length === 1 ? "" : "s"})
+            </span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Search and filter users by status, role, and LMS approval
+          </p>
+        </div>
         {/* <button
           onClick={handleAddUser}
           className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 flex items-center"
@@ -466,6 +544,109 @@ const Users = () => {
           </svg>
           Add New User
         </button> */}
+      </div>
+
+      {/* Filters: Search, Status, Role, LMS Status */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              Search
+            </label>
+            <div className="relative">
+              <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search name or email..."
+                className="w-full pl-8 pr-8 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                  title="Clear search"
+                >
+                  <FaTimes className="text-xs" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              Status
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+
+          {/* Role Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              Role
+            </label>
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white capitalize"
+            >
+              <option value="all">All Roles</option>
+              {availableRoles.map((role) => (
+                <option key={role} value={role} className="capitalize">
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* LMS Status Filter */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+              LMS Status
+            </label>
+            <select
+              value={lmsStatusFilter}
+              onChange={(e) => setLmsStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md shadow-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white"
+            >
+              <option value="all">All LMS Status</option>
+              <option value="approved">Approved</option>
+              <option value="not_approved">Not Approved</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Filter Summary & Reset Action */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center justify-between mt-3 pt-3 border-t border-gray-100 text-xs text-gray-600 gap-2">
+            <div className="flex items-center gap-1.5">
+              <FaFilter className="text-indigo-500 text-[10px]" />
+              <span>
+                Filtered: <strong className="text-gray-900">{filteredUsers.length}</strong> of{" "}
+                <strong className="text-gray-900">{users.length}</strong> users found
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <FaTimes className="text-[10px]" /> Reset Filters
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -501,20 +682,33 @@ const Users = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {users.length === 0 ? (
+              {filteredUsers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="8"
                     className="px-6 py-4 text-center text-sm text-gray-500"
                   >
-                    No users found
+                    {users.length === 0 ? (
+                      "No users found"
+                    ) : (
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <p className="text-gray-500 font-medium">No users match your filter criteria.</p>
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium cursor-pointer"
+                        >
+                          Clear all filters
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
-                users.map((user) => (
+                filteredUsers.map((user, index) => (
                   <tr key={user._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {users.indexOf(user) + 1}
+                      {index + 1}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex items-center">
@@ -680,6 +874,7 @@ const Users = () => {
       {/* Change Password Modal */}
       <ChangePasswordModal
         userId={currentUser?._id}
+        userName={currentUser?.fullname || currentUser?.email}
         isOpen={isPasswordModalOpen}
         onClose={() => {
           setIsPasswordModalOpen(false);
@@ -691,6 +886,7 @@ const Users = () => {
       <EnrollUserModal
         visible={isEnrollModalOpen}
         userId={currentUser?._id}
+        userName={currentUser?.fullname || currentUser?.email}
         onCancel={() => {
           setIsEnrollModalOpen(false);
           setCurrentUser(null);

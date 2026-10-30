@@ -225,14 +225,20 @@ const userApi = {
     }
   },
 
-  // Admin enrolls a user in a course
-  adminEnrollUser: async (userId, courseId, status = "active") => {
+  // Admin enrolls a user in one or multiple courses
+  adminEnrollUser: async (userId, courseIdOrIds, status = "active") => {
     try {
-      const response = await api.post("/enrollments/admin-enroll", {
+      const isArray = Array.isArray(courseIdOrIds);
+      const courseIds = isArray ? courseIdOrIds : [courseIdOrIds];
+
+      const payload = {
         userId,
-        courseId,
+        courseIds,
+        courseId: courseIds[0],
         status,
-      });
+      };
+
+      const response = await api.post("/enrollments/admin-enroll", payload);
       return response.data;
     } catch (error) {
       console.error("Error enrolling user in course:", error);
