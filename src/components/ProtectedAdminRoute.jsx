@@ -45,6 +45,7 @@ export default function ProtectedAdminRoute({ children, action = "canView" }) {
     const pageToRouteMap = {
       dashboard: "/admin/dashboard",
       "lms-management": "/admin/lms-management",
+      batches: "/admin/lms/batches",
       "test-qa": "/admin/test-qa",
       courses: "/admin/courses",
       "send-brochure": "/admin/send-brochure",

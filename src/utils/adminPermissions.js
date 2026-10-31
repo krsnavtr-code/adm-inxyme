@@ -45,6 +45,10 @@ export const routeToPermissionMap = {
   "/admin/lms/create-sprint": "lms-management",
   "/admin/lms/assessment": "lms-management",
   "/admin/lms/career": "lms-management",
+  "/admin/lms/batches": "batches",
+  "/admin/batches": "batches",
+  "/lms/batches": "batches",
+  "/batches": "batches",
   "/admin/candidates": "candidates",
   "/admin/admin-management": "admin-management",
   "/admin/login-records": "dashboard",
@@ -99,6 +103,21 @@ export const hasPermission = (user, page, action = "canView") => {
   }
 
   const userPermissions = user.adminPermissions || {};
+
+  // For batches or lms-management, grant access if either permission exists
+  if (page === "batches" || page === "lms-management") {
+    const pagePerm = userPermissions[page];
+    if (pagePerm && (pagePerm.canView === true || pagePerm[action] === true)) {
+      return true;
+    }
+    const alternatePage = page === "batches" ? "lms-management" : "batches";
+    const altPerm = userPermissions[alternatePage];
+    if (altPerm && (altPerm.canView === true || altPerm[action] === true)) {
+      return true;
+    }
+    return false;
+  }
+
   const pagePermission = userPermissions[page];
 
   if (!pagePermission) {
@@ -145,6 +164,7 @@ export const getAccessiblePages = (user) => {
     return [
       "dashboard",
       "lms-management",
+      "batches",
       "test-qa",
       "courses",
       "send-brochure",

@@ -41,7 +41,13 @@ const AdminLayout = () => {
     // Check user permissions (now stored as plain object)
     const permissions = currentUser?.adminPermissions || {};
     const pagePermission = permissions[page];
-    return pagePermission?.canView || false;
+    if (pagePermission?.canView) return true;
+
+    // Fallback for batches / lms-management
+    if (page === "batches" && permissions["lms-management"]?.canView) return true;
+    if (page === "lms-management" && permissions["batches"]?.canView) return true;
+
+    return false;
   };
 
   const handleLogout = () => {

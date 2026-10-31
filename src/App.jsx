@@ -105,6 +105,8 @@ export default function App() {
 
       {/* Root redirect to admin */}
       <Route path="/" element={<Navigate to="/admin" replace />} />
+      <Route path="/batches" element={<Navigate to="/admin/lms/batches" replace />} />
+      <Route path="/lms/batches" element={<Navigate to="/admin/lms/batches" replace />} />
 
       {/* Admin Protected Routes */}
       <Route
@@ -515,6 +517,14 @@ export default function App() {
         />
         <Route
           path="/admin/batches"
+          element={<Navigate to="/admin/lms/batches" replace />}
+        />
+        <Route
+          path="/lms/batches"
+          element={<Navigate to="/admin/lms/batches" replace />}
+        />
+        <Route
+          path="/batches"
           element={<Navigate to="/admin/lms/batches" replace />}
         />
         <Route
