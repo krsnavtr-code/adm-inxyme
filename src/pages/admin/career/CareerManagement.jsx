@@ -82,106 +82,26 @@ const CareerManagement = () => {
     }
   };
 
-  const handleAssignStudents = async (jobId, studentIds) => {
+  const handleAssignStudents = async (jobId, studentIds, batchId, status, notes) => {
     try {
-      await api.put(`/careers/assign/${jobId}`, { studentId: studentIds });
+      await api.put(`/careers/assign/${jobId}`, {
+        studentIds,
+        batchId,
+        status,
+        notes,
+      });
       fetchJobs(); // Refresh jobs to show updated assignments
       setShowAssignModal(false);
-      toast.success('Students assigned successfully');
+      toast.success('Batch students referred successfully');
     } catch (err) {
       console.error(err);
-      toast.error('Failed to assign students');
+      toast.error('Failed to refer students');
     }
   };
 
-  const handleOpenAssignModal = async (job) => {
+  const handleOpenAssignModal = (job) => {
     setSelectedJob(job);
-    try {
-      // First, get all enrollments
-      const res = await api.get('/enrollments/all');
-      
-      // Check if res.data.data exists and is an array
-      if (!res.data || !res.data.success || !Array.isArray(res.data.data)) {
-        console.error('Unexpected API response format:', res.data);
-        throw new Error('Invalid data format received from server');
-      }
-      
-      // Get the enrollments array from response
-      const enrollments = res.data.data;
-      
-      // Filter enrollments for the specific course and map to student data
-      const jobCourseId = job.courseId?._id || job.courseId;
-      
-      // First, log all enrollments for the job's course regardless of status
-      const allCourseEnrollments = enrollments.filter(enrollment => {
-        const courseId = typeof enrollment.course === 'object' ? enrollment.course?._id : enrollment.course;
-        const courseIdStr = String(courseId);
-        const jobCourseIdStr = String(jobCourseId);
-        const matches = courseIdStr === jobCourseIdStr;
-        
-        if (matches) {
-          console.log('Found matching enrollment:', {
-            enrollmentId: enrollment._id,
-            courseId: courseId,
-            courseIdStr,
-            status: enrollment.status,
-            user: enrollment.user
-          });
-        }
-        
-        return matches;
-      });
-      
-      // Consider enrollments as active if status is undefined or 'active'
-      const courseEnrollments = allCourseEnrollments.filter(enrollment => {
-        const isActive = !enrollment.status || enrollment.status === 'active';
-        if (!isActive) {
-          console.log('Skipping inactive enrollment:', {
-            enrollmentId: enrollment._id,
-            status: enrollment.status,
-            user: enrollment.user
-          });
-        } else {
-          console.log('Including enrollment:', {
-            enrollmentId: enrollment._id,
-            status: enrollment.status,
-            user: enrollment.user
-          });
-        }
-        return isActive;
-      });
-      
-      // Map to student data with better error handling
-      const studentData = courseEnrollments.map(enrollment => {
-        const user = typeof enrollment.user === 'object' ? enrollment.user : {};
-        return {
-          _id: user._id || enrollment.user, // Handle both populated and non-populated user
-          name: user.name || 'Unknown Student',
-          email: user.email || 'No email'
-        };
-      });
-      
-      // Remove duplicate students (in case of multiple enrollments)
-      const uniqueStudents = Array.from(new Map(
-        studentData.map(student => [student._id, student])
-      ).values());
-      
-      
-      if (uniqueStudents.length === 0) {
-        toast.info('No active students found for this course');
-        return;
-      }
-      
-      setStudents(uniqueStudents);
-      setShowAssignModal(true);
-    } catch (err) {
-      console.error('Error in handleOpenAssignModal:', {
-        error: err,
-        message: err.message,
-        response: err.response?.data
-      });
-      toast.error(`Failed to fetch students: ${err.response?.data?.message || err.message || 'Please try again'}`);
-    }
+    setShowAssignModal(true);
   };
 
   if (loading) {
@@ -231,8 +151,6 @@ const CareerManagement = () => {
       {showAssignModal && selectedJob && (
         <AssignStudentsModal
           job={selectedJob}
-          students={students}
-          assignedStudents={selectedJob.assignedStudents?.map(s => s._id) || []}
           onClose={() => setShowAssignModal(false)}
           onAssign={handleAssignStudents}
         />
