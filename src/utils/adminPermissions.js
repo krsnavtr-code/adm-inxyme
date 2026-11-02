@@ -45,6 +45,13 @@ export const routeToPermissionMap = {
   "/admin/lms/create-sprint": "lms-management",
   "/admin/lms/assessment": "lms-management",
   "/admin/lms/career": "lms-management",
+  "/admin/career": "lms-management",
+  "/lms/career": "lms-management",
+  "/career": "lms-management",
+  "/admin/lms/activities": "lms-management",
+  "/admin/activities": "lms-management",
+  "/lms/activities": "lms-management",
+  "/activities": "lms-management",
   "/admin/lms/batches": "batches",
   "/admin/batches": "batches",
   "/lms/batches": "batches",
@@ -104,10 +111,22 @@ export const hasPermission = (user, page, action = "canView") => {
 
   const userPermissions = user.adminPermissions || {};
 
-  // For batches or lms-management, grant access if either permission exists
-  if (page === "batches" || page === "lms-management") {
-    const pagePerm = userPermissions[page];
-    if (pagePerm && (pagePerm.canView === true || pagePerm[action] === true)) {
+  // For batches, lms-management, career, or activities, grant access if any related permission exists
+  if (
+    page === "batches" ||
+    page === "lms-management" ||
+    page === "career" ||
+    page === "activities"
+  ) {
+    if (
+      userPermissions["lms-management"]?.canView ||
+      userPermissions["batches"]?.canView ||
+      userPermissions["courses"]?.canView ||
+      userPermissions["activities"]?.canView ||
+      userPermissions["career"]?.canView ||
+      userPermissions[page]?.canView === true ||
+      userPermissions[page]?.[action] === true
+    ) {
       return true;
     }
     const alternatePage = page === "batches" ? "lms-management" : "batches";

@@ -108,6 +108,10 @@ export default function App() {
       <Route path="/" element={<Navigate to="/admin" replace />} />
       <Route path="/batches" element={<Navigate to="/admin/lms/batches" replace />} />
       <Route path="/lms/batches" element={<Navigate to="/admin/lms/batches" replace />} />
+      <Route path="/career" element={<Navigate to="/admin/lms/career" replace />} />
+      <Route path="/lms/career" element={<Navigate to="/admin/lms/career" replace />} />
+      <Route path="/activities" element={<Navigate to="/admin/lms/activities" replace />} />
+      <Route path="/lms/activities" element={<Navigate to="/admin/lms/activities" replace />} />
 
       {/* Admin Protected Routes */}
       <Route

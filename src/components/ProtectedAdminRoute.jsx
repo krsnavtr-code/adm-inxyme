@@ -46,6 +46,8 @@ export default function ProtectedAdminRoute({ children, action = "canView" }) {
       dashboard: "/admin/dashboard",
       "lms-management": "/admin/lms-management",
       batches: "/admin/lms/batches",
+      career: "/admin/lms/career",
+      activities: "/admin/lms/activities",
       "test-qa": "/admin/test-qa",
       courses: "/admin/courses",
       "send-brochure": "/admin/send-brochure",
