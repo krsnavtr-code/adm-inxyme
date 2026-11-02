@@ -50,7 +50,7 @@ const JobList = ({ jobs, onEdit, onDelete, onAssign }) => {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
-                    Title
+                    Job &amp; Company
                   </th>
                   <th
                     scope="col"
@@ -74,6 +74,12 @@ const JobList = ({ jobs, onEdit, onDelete, onAssign }) => {
                     scope="col"
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                   >
+                    Referred
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Deadline
                   </th>
                   <th scope="col" className="relative px-6 py-3">
@@ -85,8 +91,9 @@ const JobList = ({ jobs, onEdit, onDelete, onAssign }) => {
                 {jobs.map((job) => (
                   <tr key={job._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{job.title}</div>
-                      <div className="text-sm text-gray-500">{job.location}</div>
+                      <div className="text-sm font-bold text-gray-900">{job.title}</div>
+                      <div className="text-xs font-semibold text-blue-600">{job.companyName || 'Inxyme Partner'}</div>
+                      <div className="text-xs text-gray-500">{job.location}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{job.courseId?.title || 'N/A'}</div>
@@ -101,6 +108,11 @@ const JobList = ({ jobs, onEdit, onDelete, onAssign }) => {
                         )}`}
                       >
                         {job.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        {job.assignedStudents?.length || job.studentReferrals?.length || 0} Students
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

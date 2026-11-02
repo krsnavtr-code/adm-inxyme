@@ -48,9 +48,10 @@ const CareerManagement = () => {
   const handleCreateJob = async (jobData) => {
     try {
       const res = await api.post('/careers', jobData);
-      setJobs([...jobs, res.data]);
+      setJobs([res.data, ...jobs]);
       setShowJobForm(false);
-      toast.success('Job created successfully');
+      toast.success('Job created and student referrals saved successfully!');
+      fetchJobs();
     } catch (err) {
       console.error(err);
       toast.error('Failed to create job');
@@ -62,7 +63,9 @@ const CareerManagement = () => {
       const res = await api.put(`/careers/${id}`, jobData);
       setJobs(jobs.map(job => job._id === id ? res.data : job));
       setSelectedJob(null);
-      toast.success('Job updated successfully');
+      setShowJobForm(false);
+      toast.success('Job and referrals updated successfully!');
+      fetchJobs();
     } catch (err) {
       console.error(err);
       toast.error('Failed to update job');
