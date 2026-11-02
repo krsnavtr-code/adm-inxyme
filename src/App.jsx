@@ -28,6 +28,7 @@ import RedirectManagement from "./pages/admin/RedirectManagement";
 import DocumentVerification from "./pages/admin/DocumentVerification";
 import TestQAPage from "./pages/admin/TestQAPage";
 import CareerManagement from "./pages/admin/career/CareerManagement";
+import ActivityManagement from "./pages/admin/activities/ActivityManagement";
 import AdminManagement from "./pages/admin/AdminManagement";
 import LoginRecords from "./pages/admin/LoginRecords";
 import BlogPostList from "./pages/admin/BlogListPage";
@@ -560,6 +561,22 @@ export default function App() {
           element={
             <ProtectedAdminRoute>
               <CareerManagement />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/lms/activities"
+          element={
+            <ProtectedAdminRoute>
+              <ActivityManagement />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/activities"
+          element={
+            <ProtectedAdminRoute>
+              <ActivityManagement />
             </ProtectedAdminRoute>
           }
         />

@@ -54,6 +54,14 @@ const AdminLayout = () => {
         permissions["career"]?.canView)
     )
       return true;
+    if (
+      (page === "activities" || page === "course-activities") &&
+      (permissions["lms-management"]?.canView ||
+        permissions["batches"]?.canView ||
+        permissions["courses"]?.canView ||
+        permissions["activities"]?.canView)
+    )
+      return true;
 
     return false;
   };
@@ -199,6 +207,30 @@ const AdminLayout = () => {
                     />
                   </svg>
                   Career &amp; Referrals
+                </NavLink>
+              )}
+
+              {/* Course Activities & Quizzes */}
+              {(hasPermission("activities") || hasPermission("lms-management") || hasPermission("courses") || hasPermission("batches")) && (
+                <NavLink
+                  to="/admin/lms/activities"
+                  className={getNavLinkClass}
+                >
+                  <svg
+                    className="h-5 w-5 mr-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+                    />
+                  </svg>
+                  Activities &amp; Quizzes
                 </NavLink>
               )}
 
