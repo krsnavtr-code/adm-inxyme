@@ -8,13 +8,15 @@ import {
   Settings,
   GraduationCap,
   CreditCard,
-  BellRing
+  BellRing,
+  Briefcase
 } from 'lucide-react';
 
 const navItems = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard },
   { name: 'Courses', path: '/courses', icon: BookOpen },
   { name: 'Categories', path: '/categories', icon: FolderTree },
+  { name: 'Career & Referrals', path: '/admin/lms/career', icon: Briefcase },
   { name: 'Users & Students', path: '/users', icon: Users },
   { name: 'Transactions', path: '/transactions', icon: CreditCard },
   { name: 'Notifications', path: '/notifications', icon: BellRing },

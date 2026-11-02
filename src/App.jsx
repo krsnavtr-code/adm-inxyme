@@ -555,6 +555,14 @@ export default function App() {
             </ProtectedAdminRoute>
           }
         />
+        <Route
+          path="/admin/career"
+          element={
+            <ProtectedAdminRoute>
+              <CareerManagement />
+            </ProtectedAdminRoute>
+          }
+        />
 
         {/* Candidates Management */}
         <Route
