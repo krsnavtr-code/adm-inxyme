@@ -47,6 +47,7 @@ import BatchesManagement from "./components/admin/lmsManagement/BatchesManagemen
 import Assessment from "./components/admin/lmsManagement/Assessment";
 import CandidatesPage from "./pages/admin/CandidatesPage";
 import ReviewsPage from "./pages/admin/ReviewsPage";
+import CourseTestimonials from "./pages/admin/CourseTestimonials";
 import AdminLoginPage from "./pages/auth/AdminLoginPage";
 import LandingLeadsPage from "./pages/admin/landing/LandingLeadsPage";
 import PartialLeadsPage from "./pages/admin/landing/PartialLeadsPage";
@@ -83,6 +84,7 @@ const AdminRedirect = () => {
     redirects: "/admin/redirects",
     "document-verification": "/admin/document-verification",
     reviews: "/admin/reviews",
+    "course-testimonials": "/admin/course-testimonials",
     "success-stories": "/admin/success-stories",
     "news-events": "/admin/news-events",
   };
@@ -175,6 +177,14 @@ export default function App() {
           element={
             <ProtectedAdminRoute action="canEdit">
               <CourseForm isEdit={true} />
+            </ProtectedAdminRoute>
+          }
+        />
+        <Route
+          path="/admin/course-testimonials"
+          element={
+            <ProtectedAdminRoute>
+              <CourseTestimonials />
             </ProtectedAdminRoute>
           }
         />

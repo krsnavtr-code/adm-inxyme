@@ -139,6 +139,7 @@ export const getCourseById = async (id) => {
           "faqs",
           "brochureUrl",
           "brochureGeneratedAt",
+          "studentTestimonials",
         ].join(","),
       },
     });
@@ -677,5 +678,58 @@ export const getCategoriesForForm = async () => {
     }
     // Return empty array instead of throwing to prevent UI crashes
     return [];
+  }
+};
+
+// Course Testimonials API
+export const getCourseTestimonials = async (courseId) => {
+  try {
+    const response = await axios.get(`/courses/${courseId}/testimonials`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching course testimonials:", error);
+    throw error;
+  }
+};
+
+export const addCourseTestimonial = async (courseId, testimonialData) => {
+  try {
+    const response = await axios.post(
+      `/courses/${courseId}/testimonials`,
+      testimonialData,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error adding course testimonial:", error);
+    throw error;
+  }
+};
+
+export const updateCourseTestimonial = async (
+  courseId,
+  testimonialId,
+  testimonialData,
+) => {
+  try {
+    const response = await axios.put(
+      `/courses/${courseId}/testimonials/${testimonialId}`,
+      testimonialData,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error updating course testimonial:", error);
+    throw error;
+  }
+};
+
+export const deleteCourseTestimonial = async (courseId, testimonialId) => {
+  try {
+    const response = await axios.delete(
+      `/courses/${courseId}/testimonials/${testimonialId}`,
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting course testimonial:", error);
+    throw error;
   }
 };
