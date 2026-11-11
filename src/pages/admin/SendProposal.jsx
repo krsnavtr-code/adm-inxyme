@@ -39,7 +39,7 @@ Looking forward to your positive response.
 
 Thank you & Best Regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -74,7 +74,7 @@ We look forward to seeing you at the event!
 
 Warm regards,
 <strong style="font-weight: 600; color: #4f46e5;">Inxyme</strong>
-📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -102,7 +102,7 @@ We look forward to having your institution join us in empowering the next genera
 
 Warm regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -133,7 +133,7 @@ For details and bookings, feel free to contact:
 
 Warm regards,
 <span style="font-weight: 600; color: #4f46e5;">Inxyme</span>
-📞 <span style="font-weight: 600; color: #007BFF;">9990999561</span> 
+📞 <span style="font-weight: 600; color: #007BFF;">9891030303</span> 
 📧 <span style="font-weight: 600; color: #007BFF;">info@inxyme.com</span>
 🌐 <span style="font-weight: 600; color: #007BFF;">https://www.inxyme.com</span>
 </div>`,
@@ -230,9 +230,8 @@ const SendProposal = () => {
 
       const response = await axios({
         method: "post",
-        url: `${
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:4002/api"
-        }/v1/admin/emails/send-proposal`,
+        url: `${import.meta.env.VITE_API_BASE_URL || "http://localhost:4002/api"
+          }/v1/admin/emails/send-proposal`,
         data: formData,
         headers: {
           "Content-Type": "multipart/form-data",
@@ -401,11 +400,10 @@ const SendProposal = () => {
             {MESSAGE_OPTIONS.map((option) => (
               <div
                 key={option.id}
-                className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer ${
-                  currentMessageType === option.id
+                className={`border rounded-lg p-4 transition-all duration-200 cursor-pointer ${currentMessageType === option.id
                     ? "border-indigo-500 bg-indigo-50 ring-1 ring-indigo-500"
                     : "border-gray-200 hover:border-indigo-300"
-                }`}
+                  }`}
               >
                 <label className="flex items-start space-x-3 cursor-pointer w-full">
                   <input
@@ -565,10 +563,9 @@ const SendProposal = () => {
             type="submit"
             disabled={isSubmitting}
             className={`flex items-center px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
-              ${
-                isSubmitting
-                  ? "bg-indigo-400 cursor-not-allowed"
-                  : "bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              ${isSubmitting
+                ? "bg-indigo-400 cursor-not-allowed"
+                : "bg-indigo-600 hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               }`}
           >
             {isSubmitting ? (
