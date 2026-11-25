@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import userApi from "../../api/userApi";
-import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter } from "react-icons/fa";
+import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter, FaRupeeSign } from "react-icons/fa";
 import EnrollUserModal from "./EnrollUserModal";
 
 // Modal components
@@ -268,6 +269,7 @@ const ChangePasswordModal = ({ userId, onClose, onSave, isOpen }) => {
 };
 
 const Users = () => {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -877,6 +879,13 @@ const Users = () => {
                           title="Enroll in Course"
                         >
                           <FaBook />
+                        </button>
+                        <button
+                          onClick={() => navigate(`/admin/payments?userId=${user._id}`)}
+                          className="text-amber-600 hover:text-amber-800"
+                          title="Add Student Payment & Invoice"
+                        >
+                          <FaRupeeSign />
                         </button>
                       </div>
                     </td>
