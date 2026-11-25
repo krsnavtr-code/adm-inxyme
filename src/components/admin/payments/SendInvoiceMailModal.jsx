@@ -435,6 +435,22 @@ export default function SendInvoiceMailModal({
                           {formatCurrencyINR(effectiveGst.grandTotal, true)}
                         </span>
                       </div>
+                      {Number(payment?.previouslyPaidAmount) > 0 && (
+                        <div className="flex justify-between text-emerald-700 font-semibold">
+                          <span>Previously Paid (Earlier)</span>
+                          <span>
+                            - {formatCurrencyINR(payment.previouslyPaidAmount, true)}
+                          </span>
+                        </div>
+                      )}
+                      {Number(payment?.balanceDue) > 0 && (
+                        <div className="flex justify-between text-amber-700 font-semibold">
+                          <span>Balance Remaining</span>
+                          <span>
+                            {formatCurrencyINR(payment.balanceDue, true)}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     {/* Attachment Badge */}

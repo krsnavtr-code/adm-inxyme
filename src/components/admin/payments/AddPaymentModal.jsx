@@ -20,7 +20,9 @@ import {
   PAYMENT_METHODS,
   INSTALLMENT_PRESETS,
   computeGstBreakup,
+  computeRemainingBalance,
   computeUserDiscountFromFee,
+  filterCompletedPaymentsForCourse,
   formatCurrencyINR,
   resolveCoursePrice,
 } from "../../../utils/paymentFormatters";
@@ -68,6 +70,8 @@ export default function AddPaymentModal({
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fetchingPricing, setFetchingPricing] = useState(false);
+  const [studentPayments, setStudentPayments] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const activeUserIdRef = useRef("");
   const activeCourseIdRef = useRef("");
@@ -75,9 +79,11 @@ export default function AddPaymentModal({
   const paymentManualRef = useRef(false);
   const latestFormRef = useRef(formData);
   const latestSelectedUserRef = useRef(selectedUser);
+  const latestStudentPaymentsRef = useRef(studentPayments);
 
   latestFormRef.current = formData;
   latestSelectedUserRef.current = selectedUser;
+  latestStudentPaymentsRef.current = studentPayments;
 
   const mergeCoursesIntoState = (extraCourses = []) => {
     const validExtras = (Array.isArray(extraCourses) ? extraCourses : []).filter(
@@ -181,6 +187,9 @@ export default function AddPaymentModal({
     discountManualRef.current = false;
     paymentManualRef.current = false;
     setFetchingPricing(false);
+    setLoadingHistory(false);
+    setStudentPayments([]);
+    latestStudentPaymentsRef.current = [];
     setUserSearch("");
     setRoleFilter("student");
     setSelectedUser(null);
@@ -212,8 +221,15 @@ export default function AddPaymentModal({
     }
 
     const baseFee = resolveCoursePrice(courseObj);
-    const { discountAmount: computedDiscount, netPayable } =
-      computeUserDiscountFromFee(baseFee, userObj?.discount);
+    const { discountAmount: computedDiscount } = computeUserDiscountFromFee(
+      baseFee,
+      userObj?.discount
+    );
+    const priorPaidForCourse = filterCompletedPaymentsForCourse(
+      latestStudentPaymentsRef.current,
+      courseObj._id,
+      courseObj.title
+    ).reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
 
     setFormData((prev) => {
       const nextTotalFee = String(baseFee);
@@ -221,8 +237,11 @@ export default function AddPaymentModal({
         preserveManual && discountManualRef.current
           ? Math.max(0, Number(prev.discountAmount || 0))
           : computedDiscount;
-      const effectiveNetPayable = Number(
-        Math.max(0, baseFee - effectiveDiscount).toFixed(2)
+      const effectiveNetPayable = computeRemainingBalance(
+        baseFee,
+        effectiveDiscount,
+        priorPaidForCourse,
+        0
       );
 
       return {
@@ -237,7 +256,7 @@ export default function AddPaymentModal({
         paymentAmount:
           preserveManual && paymentManualRef.current
             ? prev.paymentAmount
-            : String(preserveManual ? effectiveNetPayable : netPayable),
+            : String(effectiveNetPayable),
       };
     });
     setErrors((prev) => ({
@@ -292,100 +311,111 @@ export default function AddPaymentModal({
       };
     });
 
-    const [userRes, enrollRes] = await Promise.allSettled([
-      userApi.getById(user._id),
-      api.get(`/enrollments/user/${user._id}`),
-    ]);
+    setStudentPayments([]);
+    latestStudentPaymentsRef.current = [];
+    setLoadingHistory(true);
 
-    if (activeUserIdRef.current !== userId) return;
+    try {
+      const [userRes, enrollRes, historyRes] = await Promise.allSettled([
+        userApi.getById(user._id),
+        api.get(`/enrollments/user/${user._id}`),
+        paymentApi.getStudentPaymentHistory({
+          userId: user._id,
+          email: user.email || "",
+        }),
+      ]);
 
-    let effectiveUser = user;
-    if (userRes.status === "fulfilled" && userRes.value) {
-      const rawUser = userRes.value?.data || userRes.value;
-      if (rawUser && rawUser._id) {
-        effectiveUser = { ...user, ...rawUser };
-        setSelectedUser(effectiveUser);
-        latestSelectedUserRef.current = effectiveUser;
-        setUsers((prev) =>
-          prev.map((u) => (String(u._id) === userId ? { ...u, ...effectiveUser } : u))
-        );
+      if (activeUserIdRef.current !== userId) return;
 
-        const freshPopulated = (
-          Array.isArray(effectiveUser.enrolledCourses)
-            ? effectiveUser.enrolledCourses
-            : []
-        ).filter((c) => c && typeof c === "object" && c._id);
-        mergeCoursesIntoState(freshPopulated);
-        freshPopulated.forEach((c) => ids.add(String(c._id)));
-      }
-    }
+      const fetchedHistory =
+        historyRes.status === "fulfilled" && historyRes.value?.success
+          ? historyRes.value.payments || []
+          : [];
+      setStudentPayments(fetchedHistory);
+      latestStudentPaymentsRef.current = fetchedHistory;
 
-    const enrollmentPopulated = [];
-    if (enrollRes.status === "fulfilled") {
-      const list = enrollRes.value?.data?.data || enrollRes.value?.data || [];
-      if (Array.isArray(list)) {
-        list.forEach((e) => {
-          if (e.course && typeof e.course === "object" && e.course._id) {
-            enrollmentPopulated.push(e.course);
-          }
-          const cid =
-            (typeof e.course === "object" ? e.course?._id : e.course) || e.courseId;
-          if (cid) ids.add(String(cid));
-        });
-      }
-    }
-    mergeCoursesIntoState(enrollmentPopulated);
-    setEnrolledCourseIds(new Set(ids));
+      let effectiveUser = user;
+      if (userRes.status === "fulfilled" && userRes.value) {
+        const rawUser = userRes.value?.data || userRes.value;
+        if (rawUser && rawUser._id) {
+          effectiveUser = { ...user, ...rawUser };
+          setSelectedUser(effectiveUser);
+          latestSelectedUserRef.current = effectiveUser;
+          setUsers((prev) =>
+            prev.map((u) => (String(u._id) === userId ? { ...u, ...effectiveUser } : u))
+          );
 
-    const combinedCourses = [
-      ...availableCourses,
-      ...populatedCourses,
-      ...enrollmentPopulated,
-    ];
-    const currentForm = latestFormRef.current;
-
-    if (currentForm.courseId) {
-      // Keep the selected course, refresh user's discount & contact details
-      setFormData((prev) => {
-        const nextPhone = prev.phone || effectiveUser.phone || "";
-        const nextAddress = prev.address || effectiveUser.address || "";
-        const feeNum = Number(prev.totalCourseFee);
-        if (discountManualRef.current || Number.isNaN(feeNum) || prev.totalCourseFee === "") {
-          return { ...prev, phone: nextPhone, address: nextAddress };
+          const freshPopulated = (
+            Array.isArray(effectiveUser.enrolledCourses)
+              ? effectiveUser.enrolledCourses
+              : []
+          ).filter((c) => c && typeof c === "object" && c._id);
+          mergeCoursesIntoState(freshPopulated);
+          freshPopulated.forEach((c) => ids.add(String(c._id)));
         }
-        const { discountAmount: dAmt, netPayable } = computeUserDiscountFromFee(
-          feeNum,
-          effectiveUser.discount
-        );
-        return {
-          ...prev,
-          phone: nextPhone,
-          address: nextAddress,
-          discountAmount: String(dAmt),
-          paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(netPayable),
-        };
-      });
-    } else if (
-      currentForm.totalCourseFee !== "" &&
-      !discountManualRef.current
-    ) {
-      const { discountAmount: dAmt, netPayable } = computeUserDiscountFromFee(
-        currentForm.totalCourseFee,
-        effectiveUser.discount
-      );
-      setFormData((prev) => ({
-        ...prev,
-        phone: prev.phone || effectiveUser.phone || "",
-        address: prev.address || effectiveUser.address || "",
-        discountAmount: String(dAmt),
-        paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(netPayable),
-      }));
-    } else if (!currentForm.course && ids.size === 1) {
-      // Auto-pick single enrolled course if no course chosen yet
-      const singleId = Array.from(ids)[0];
-      const matchedCourse = combinedCourses.find((c) => String(c._id) === singleId);
-      if (matchedCourse) {
-        applyCourseSelection(matchedCourse, effectiveUser);
+      }
+
+      const enrollmentPopulated = [];
+      if (enrollRes.status === "fulfilled") {
+        const list = enrollRes.value?.data?.data || enrollRes.value?.data || [];
+        if (Array.isArray(list)) {
+          list.forEach((e) => {
+            if (e.course && typeof e.course === "object" && e.course._id) {
+              enrollmentPopulated.push(e.course);
+            }
+            const cid =
+              (typeof e.course === "object" ? e.course?._id : e.course) || e.courseId;
+            if (cid) ids.add(String(cid));
+          });
+        }
+      }
+      mergeCoursesIntoState(enrollmentPopulated);
+      setEnrolledCourseIds(new Set(ids));
+
+      const combinedCourses = [
+        ...availableCourses,
+        ...populatedCourses,
+        ...enrollmentPopulated,
+      ];
+      const currentForm = latestFormRef.current;
+
+      if (currentForm.courseId || (currentForm.totalCourseFee !== "" && !Number.isNaN(Number(currentForm.totalCourseFee)))) {
+        const priorPaid = filterCompletedPaymentsForCourse(
+          fetchedHistory,
+          currentForm.courseId,
+          currentForm.course
+        ).reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
+
+        setFormData((prev) => {
+          const nextPhone = prev.phone || effectiveUser.phone || "";
+          const nextAddress = prev.address || effectiveUser.address || "";
+          const feeNum = Number(prev.totalCourseFee);
+          if (Number.isNaN(feeNum) || prev.totalCourseFee === "") {
+            return { ...prev, phone: nextPhone, address: nextAddress };
+          }
+          const nextDiscount = discountManualRef.current
+            ? Math.max(0, Number(prev.discountAmount) || 0)
+            : computeUserDiscountFromFee(feeNum, effectiveUser.discount).discountAmount;
+          const nextNetPayable = computeRemainingBalance(feeNum, nextDiscount, priorPaid, 0);
+          return {
+            ...prev,
+            phone: nextPhone,
+            address: nextAddress,
+            discountAmount: discountManualRef.current ? prev.discountAmount : String(nextDiscount),
+            paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(nextNetPayable),
+          };
+        });
+      } else if (!currentForm.course && ids.size === 1) {
+        // Auto-pick single enrolled course if no course chosen yet
+        const singleId = Array.from(ids)[0];
+        const matchedCourse = combinedCourses.find((c) => String(c._id) === singleId);
+        if (matchedCourse) {
+          applyCourseSelection(matchedCourse, effectiveUser);
+        }
+      }
+    } finally {
+      if (activeUserIdRef.current === userId) {
+        setLoadingHistory(false);
       }
     }
   };
@@ -505,13 +535,77 @@ export default function AddPaymentModal({
     [formData.paymentAmount, formData.gstRate, formData.gstInclusive]
   );
 
-  const computedBalance = useMemo(() => {
-    const total = Number(formData.totalCourseFee || 0);
-    if (!total) return 0;
-    const discount = Number(formData.discountAmount || 0);
-    const paid = Number(formData.paymentAmount || 0);
-    return Math.max(0, total - discount - paid);
-  }, [formData.totalCourseFee, formData.discountAmount, formData.paymentAmount]);
+  const matchingPreviousPayments = useMemo(
+    () =>
+      selectedUser
+        ? filterCompletedPaymentsForCourse(
+            studentPayments,
+            formData.courseId,
+            formData.course
+          )
+        : [],
+    [selectedUser, studentPayments, formData.courseId, formData.course]
+  );
+
+  const previouslyPaidAmount = useMemo(
+    () =>
+      Number(
+        matchingPreviousPayments
+          .reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0)
+          .toFixed(2)
+      ),
+    [matchingPreviousPayments]
+  );
+
+  const totalStudentPaidAllCourses = useMemo(
+    () =>
+      Number(
+        studentPayments
+          .filter((p) => (p.status || "").toLowerCase() === "completed")
+          .reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0)
+          .toFixed(2)
+      ),
+    [studentPayments]
+  );
+
+  const netBeforeCurrentPayment = useMemo(
+    () =>
+      computeRemainingBalance(
+        formData.totalCourseFee,
+        formData.discountAmount,
+        previouslyPaidAmount,
+        0
+      ),
+    [formData.totalCourseFee, formData.discountAmount, previouslyPaidAmount]
+  );
+
+  // Keep default Amount Received synced with remaining balance (Fee - Discount - Previously Paid)
+  useEffect(() => {
+    if (!open || paymentManualRef.current) return;
+    if (formData.totalCourseFee === "" || Number.isNaN(Number(formData.totalCourseFee))) {
+      return;
+    }
+    const nextStr = String(netBeforeCurrentPayment);
+    setFormData((prev) =>
+      String(prev.paymentAmount) === nextStr ? prev : { ...prev, paymentAmount: nextStr }
+    );
+  }, [open, netBeforeCurrentPayment, formData.totalCourseFee]);
+
+  const computedBalance = useMemo(
+    () =>
+      computeRemainingBalance(
+        formData.totalCourseFee,
+        formData.discountAmount,
+        previouslyPaidAmount,
+        formData.paymentAmount
+      ),
+    [
+      formData.totalCourseFee,
+      formData.discountAmount,
+      previouslyPaidAmount,
+      formData.paymentAmount,
+    ]
+  );
 
   const expectedUserDiscount = useMemo(() => {
     const { discountAmount } = computeUserDiscountFromFee(
@@ -522,6 +616,12 @@ export default function AddPaymentModal({
   }, [formData.totalCourseFee, selectedUser?.discount]);
 
   const handleFieldChange = (name, value) => {
+    const prevPaidNow = filterCompletedPaymentsForCourse(
+      latestStudentPaymentsRef.current,
+      latestFormRef.current.courseId,
+      name === "course" ? value : latestFormRef.current.course
+    ).reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
+
     if (name === "totalCourseFee") {
       setFormData((prev) => {
         if (discountManualRef.current) {
@@ -529,13 +629,14 @@ export default function AddPaymentModal({
             return { ...prev, totalCourseFee: value };
           }
           const customDiscount = Math.max(0, Number(prev.discountAmount) || 0);
-          const nextNet = Number(Math.max(0, (Number(value) || 0) - customDiscount).toFixed(2));
+          const nextNet = computeRemainingBalance(value, customDiscount, prevPaidNow, 0);
           return { ...prev, totalCourseFee: value, paymentAmount: String(nextNet) };
         }
-        const { discountAmount: dAmt, netPayable } = computeUserDiscountFromFee(
+        const { discountAmount: dAmt } = computeUserDiscountFromFee(
           value,
           latestSelectedUserRef.current?.discount
         );
+        const nextNet = computeRemainingBalance(value, dAmt, prevPaidNow, 0);
         return {
           ...prev,
           totalCourseFee: value,
@@ -544,7 +645,7 @@ export default function AddPaymentModal({
             ? prev.paymentAmount
             : value === ""
             ? ""
-            : String(netPayable),
+            : String(nextNet),
         };
       });
     } else if (name === "discountAmount") {
@@ -553,9 +654,12 @@ export default function AddPaymentModal({
         if (paymentManualRef.current || prev.totalCourseFee === "") {
           return { ...prev, discountAmount: value };
         }
-        const feeNum = Math.max(0, Number(prev.totalCourseFee) || 0);
-        const discNum = Math.max(0, Number(value) || 0);
-        const nextNet = Number(Math.max(0, feeNum - discNum).toFixed(2));
+        const nextNet = computeRemainingBalance(
+          prev.totalCourseFee,
+          value,
+          prevPaidNow,
+          0
+        );
         return { ...prev, discountAmount: value, paymentAmount: String(nextNet) };
       });
     } else if (name === "paymentAmount") {
@@ -572,15 +676,17 @@ export default function AddPaymentModal({
 
   const handleApplyUserDiscount = () => {
     discountManualRef.current = false;
+    const prevPaidNow = previouslyPaidAmount;
     setFormData((prev) => {
-      const { discountAmount: dAmt, netPayable } = computeUserDiscountFromFee(
+      const { discountAmount: dAmt } = computeUserDiscountFromFee(
         prev.totalCourseFee,
         latestSelectedUserRef.current?.discount
       );
+      const nextNet = computeRemainingBalance(prev.totalCourseFee, dAmt, prevPaidNow, 0);
       return {
         ...prev,
         discountAmount: String(dAmt),
-        paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(netPayable),
+        paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(nextNet),
       };
     });
   };
@@ -621,6 +727,7 @@ export default function AddPaymentModal({
         installmentLabel: formData.installmentLabel.trim() || "Full Course Fee",
         totalCourseFee: formData.totalCourseFee !== "" ? Number(formData.totalCourseFee) : null,
         discountAmount: Number(formData.discountAmount || 0),
+        previouslyPaidAmount,
         balanceDue: computedBalance,
         paymentAmount: Number(formData.paymentAmount),
         paymentMethod: formData.paymentMethod,
@@ -1164,8 +1271,74 @@ export default function AddPaymentModal({
               {errors.paymentAmount && (
                 <p className="mt-1 text-xs text-red-600">{errors.paymentAmount}</p>
               )}
+              {!errors.paymentAmount &&
+                Number(formData.totalCourseFee) > 0 &&
+                previouslyPaidAmount > 0 &&
+                netBeforeCurrentPayment === 0 && (
+                  <p className="mt-1 text-[11px] font-medium text-amber-700">
+                    Course fee already fully paid earlier (
+                    {formatCurrencyINR(previouslyPaidAmount, true)} received)
+                  </p>
+                )}
             </div>
           </div>
+
+          {/* Student's Previously Received Payments Banner */}
+          {selectedUser && (loadingHistory || matchingPreviousPayments.length > 0 || totalStudentPaidAllCourses > 0) && (
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3.5 py-2.5 text-xs space-y-1.5">
+              {loadingHistory ? (
+                <div className="flex items-center gap-2 text-emerald-800">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Checking student&apos;s earlier payments...</span>
+                </div>
+              ) : matchingPreviousPayments.length > 0 ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-emerald-900">
+                      Already Paid Earlier ({matchingPreviousPayments.length} payment
+                      {matchingPreviousPayments.length > 1 ? "s" : ""} for this course):{" "}
+                      {formatCurrencyINR(previouslyPaidAmount, true)}
+                    </span>
+                    {Number(formData.totalCourseFee) > 0 && (
+                      <span className="font-semibold text-indigo-800">
+                        Payable Now: {formatCurrencyINR(netBeforeCurrentPayment, true)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {matchingPreviousPayments.slice(0, 4).map((p) => (
+                      <span
+                        key={p._id}
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-white px-2 py-0.5 text-[11px] text-emerald-900 font-medium"
+                      >
+                        <span className="font-mono">{p.invoiceNumber || "Paid"}</span>
+                        <span>•</span>
+                        <span>{formatCurrencyINR(p.paymentAmount)}</span>
+                        <span className="text-emerald-600">
+                          (
+                          {new Date(p.paymentDate || p.createdAt).toLocaleDateString(
+                            "en-IN",
+                            { day: "2-digit", month: "short" }
+                          )}
+                          )
+                        </span>
+                      </span>
+                    ))}
+                    {matchingPreviousPayments.length > 4 && (
+                      <span className="text-[11px] text-emerald-700 self-center">
+                        +{matchingPreviousPayments.length - 4} more
+                      </span>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="text-emerald-800">
+                  No earlier completed payment for this course (Other courses paid by
+                  student: {formatCurrencyINR(totalStudentPaidAllCourses, true)})
+                </div>
+              )}
+            </div>
+          )}
 
           {/* GST Breakup Live Summary + Optional Company GSTIN */}
           <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5 space-y-2.5">
@@ -1238,8 +1411,15 @@ export default function AddPaymentModal({
                 />
               </div>
               {Number(formData.totalCourseFee) > 0 && (
-                <div className="font-semibold text-amber-800">
-                  Balance Remaining: {formatCurrencyINR(computedBalance, true)}
+                <div className="text-right">
+                  {previouslyPaidAmount > 0 && (
+                    <span className="text-[11px] text-emerald-700 font-medium mr-2">
+                      Prev. Paid: {formatCurrencyINR(previouslyPaidAmount, true)} •
+                    </span>
+                  )}
+                  <span className="font-semibold text-amber-800">
+                    Balance Remaining: {formatCurrencyINR(computedBalance, true)}
+                  </span>
                 </div>
               )}
             </div>

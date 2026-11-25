@@ -9,6 +9,11 @@ const paymentApi = {
     return response.data;
   },
 
+  getStudentPaymentHistory: async (params = {}) => {
+    const response = await api.get("/admin/payments/student-history", { params });
+    return response.data;
+  },
+
   createAdminPayment: async (payload) => {
     const response = await api.post("/admin/payments", payload);
     return response.data;

@@ -68,6 +68,44 @@ export const computeUserDiscountFromFee = (totalFee, discountPercent) => {
   };
 };
 
+/**
+ * Compute remaining balance after subtracting discount, previously received installments, and current payment.
+ */
+export const computeRemainingBalance = (
+  totalFee,
+  discountAmount = 0,
+  previouslyPaid = 0,
+  currentPaid = 0
+) => {
+  const total = Math.max(0, Number(totalFee) || 0);
+  if (!total) return 0;
+  const discount = Math.max(0, Number(discountAmount) || 0);
+  const prevPaid = Math.max(0, Number(previouslyPaid) || 0);
+  const paidNow = Math.max(0, Number(currentPaid) || 0);
+  return Number(Math.max(0, total - discount - prevPaid - paidNow).toFixed(2));
+};
+
+/**
+ * Filter completed payment records matching a given courseId or course title.
+ */
+export const filterCompletedPaymentsForCourse = (
+  paymentsList = [],
+  courseId = "",
+  courseTitle = ""
+) => {
+  const targetId = courseId ? String(courseId) : "";
+  const targetTitle = String(courseTitle || "").trim().toLowerCase();
+  if ((!targetId && !targetTitle) || !Array.isArray(paymentsList)) return [];
+
+  return paymentsList.filter((p) => {
+    if (!p || (p.status || "").toLowerCase() !== "completed") return false;
+    const pCourseId = p.courseId?._id || p.courseId;
+    if (targetId && pCourseId && String(pCourseId) === targetId) return true;
+    const pTitle = String(p.course || "").trim().toLowerCase();
+    return Boolean(targetTitle && pTitle && pTitle === targetTitle);
+  });
+};
+
 export const computeGstBreakup = (amount, gstRate = 18, gstInclusive = true) => {
   const numericAmount = Math.max(0, Number(amount) || 0);
   const rate = Math.max(0, Number(gstRate ?? 18));

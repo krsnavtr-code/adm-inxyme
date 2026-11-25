@@ -310,6 +310,12 @@ export default function PaymentDetails() {
                 <span>- {formatCurrencyINR(payment.discountAmount, true)}</span>
               </div>
             )}
+            {Number(payment.previouslyPaidAmount) > 0 && (
+              <div className="flex justify-between text-emerald-700">
+                <span>Previously Paid (Earlier)</span>
+                <span>- {formatCurrencyINR(payment.previouslyPaidAmount, true)}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-500">Taxable Value</span>
               <span className="font-medium text-gray-900">
