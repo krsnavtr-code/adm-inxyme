@@ -13,6 +13,9 @@ import {
 import NativeModalDialog from "./payments/NativeModalDialog";
 import userApi from "../../api/userApi";
 
+const DEFAULT_LMS_URL =
+  import.meta.env.VITE_LMS_URL || "https://smart-board.inxyme.com";
+
 const isValidHttpUrl = (value = "") => /^https?:\/\/\S+$/i.test(String(value || "").trim());
 
 export default function SendLmsInviteModal({
@@ -29,7 +32,7 @@ export default function SendLmsInviteModal({
 
   const [toEmail, setToEmail] = useState("");
   const [ccEmail, setCcEmail] = useState("");
-  const [lmsLoginUrl, setLmsLoginUrl] = useState("https://www.inxyme.com/login");
+  const [lmsLoginUrl, setLmsLoginUrl] = useState(DEFAULT_LMS_URL);
   const [courseNames, setCourseNames] = useState("");
   const [autoApproveLms, setAutoApproveLms] = useState(true);
 
@@ -49,7 +52,7 @@ export default function SendLmsInviteModal({
           const p = res.preview;
           if (!preserveEdits) {
             setToEmail(p.to || "");
-            setLmsLoginUrl(p.lmsLoginUrl || "https://www.inxyme.com/login");
+            setLmsLoginUrl(p.lmsLoginUrl || DEFAULT_LMS_URL);
             setCourseNames(p.courseSummary || "");
           }
           if (!preserveEdits || !subjectEditedRef.current) {
@@ -159,7 +162,7 @@ export default function SendLmsInviteModal({
 
   const safeLoginUrl = isValidHttpUrl(lmsLoginUrl)
     ? lmsLoginUrl.trim()
-    : "https://www.inxyme.com/login";
+    : DEFAULT_LMS_URL;
 
   return (
     <NativeModalDialog
@@ -279,7 +282,7 @@ export default function SendLmsInviteModal({
                 required
                 value={lmsLoginUrl}
                 onChange={(e) => setLmsLoginUrl(e.target.value)}
-                placeholder="https://www.inxyme.com/login"
+                placeholder="https://smart-board.inxyme.com"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-gray-900 focus:border-blue-600 focus:outline-none"
               />
             </div>
