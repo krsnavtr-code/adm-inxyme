@@ -225,6 +225,22 @@ const userApi = {
     }
   },
 
+  // Get default LMS invite email preview for a user
+  getLmsInvitePreview: async (userId, params = {}) => {
+    const response = await api.get(`/users/${userId}/lms-invite-preview`, {
+      params,
+    });
+    return response.data;
+  },
+
+  // Send LMS welcome/invite email to a user
+  sendLmsInvite: async (userId, payload) => {
+    const response = await api.post(`/users/${userId}/send-lms-invite`, payload, {
+      timeout: 30000,
+    });
+    return response.data;
+  },
+
   // Admin enrolls a user in one or multiple courses
   adminEnrollUser: async (userId, courseIdOrIds, status = "active") => {
     try {

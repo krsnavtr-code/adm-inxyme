@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import userApi from "../../api/userApi";
-import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter, FaRupeeSign } from "react-icons/fa";
+import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter, FaRupeeSign, FaPaperPlane } from "react-icons/fa";
 import EnrollUserModal from "./EnrollUserModal";
+import SendLmsInviteModal from "./SendLmsInviteModal";
 
 // Modal components
 const UserModal = ({ user, onClose, onSave, isOpen }) => {
@@ -275,6 +276,7 @@ const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
+  const [lmsInviteUser, setLmsInviteUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [editingUserId, setEditingUserId] = useState(null);
   const [editingDiscountId, setEditingDiscountId] = useState(null);
@@ -805,6 +807,18 @@ const Users = () => {
                         >
                           {user.isApproved ? "Approved" : "Not Approved"}
                         </span>
+                        {user.lmsInviteSent && (
+                          <span
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-100 w-fit"
+                            title={
+                              user.lmsInviteSentAt
+                                ? `Invite sent on ${new Date(user.lmsInviteSentAt).toLocaleString("en-IN")}`
+                                : "LMS Invite Sent"
+                            }
+                          >
+                            Invite Sent ({user.lmsInviteSentCount || 1}x)
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -850,10 +864,11 @@ const Users = () => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
+                      <div className="flex items-center space-x-2">
                         <button
                           onClick={() => handleEditClick(user)}
                           className="text-indigo-600 hover:text-indigo-900"
+                          title="Edit User"
                         >
                           <FaEdit />
                         </button>
@@ -863,6 +878,7 @@ const Users = () => {
                             setIsPasswordModalOpen(true);
                           }}
                           className="text-blue-600 hover:text-blue-900"
+                          title="Change Password"
                         >
                           <FaKey />
                         </button>
@@ -886,6 +902,21 @@ const Users = () => {
                           title="Add Student Payment & Invoice"
                         >
                           <FaRupeeSign />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLmsInviteUser(user)}
+                          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+                            user.lmsInviteSent
+                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          }`}
+                          title="Send LMS Invite Mail"
+                        >
+                          <FaPaperPlane className="text-[11px]" />
+                          <span>
+                            {user.lmsInviteSent ? "Resend LMS Invite" : "Send LMS Invite Mail"}
+                          </span>
                         </button>
                       </div>
                     </td>
@@ -930,6 +961,23 @@ const Users = () => {
           setCurrentUser(null);
         }}
         onEnroll={handleEnrollUser}
+      />
+
+      <SendLmsInviteModal
+        open={Boolean(lmsInviteUser)}
+        user={lmsInviteUser}
+        onClose={() => setLmsInviteUser(null)}
+        onInviteSent={(updatedUser) => {
+          if (updatedUser?._id) {
+            setUsers((prev) =>
+              prev.map((u) =>
+                u._id === updatedUser._id ? { ...u, ...updatedUser } : u
+              )
+            );
+          } else {
+            fetchUsers();
+          }
+        }}
       />
     </div>
   );
