@@ -49,6 +49,22 @@ const paymentApi = {
     });
     return response.data;
   },
+
+  getPendingAlertPreview: async (id, params = {}) => {
+    const response = await api.get(`/admin/payments/${id}/pending-alert-preview`, {
+      params,
+    });
+    return response.data;
+  },
+
+  sendPendingAlertEmail: async (id, payload) => {
+    const response = await api.post(
+      `/admin/payments/${id}/send-pending-alert`,
+      payload,
+      { timeout: 30000 }
+    );
+    return response.data;
+  },
 };
 
 export default paymentApi;

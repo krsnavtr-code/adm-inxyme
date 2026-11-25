@@ -18,10 +18,12 @@ import {
   X,
   Receipt,
   CreditCard,
+  BellRing,
 } from "lucide-react";
 import paymentApi from "../../api/paymentApi";
 import AddPaymentModal from "../../components/admin/payments/AddPaymentModal";
 import SendInvoiceMailModal from "../../components/admin/payments/SendInvoiceMailModal";
+import SendPendingAlertModal from "../../components/admin/payments/SendPendingAlertModal";
 import {
   formatCurrencyINR,
   getPaymentMethodLabel,
@@ -56,6 +58,7 @@ export default function PaymentsList() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialUserId));
   const [recentAddedPayment, setRecentAddedPayment] = useState(null);
   const [invoiceModalPayment, setInvoiceModalPayment] = useState(null);
+  const [alertModalPayment, setAlertModalPayment] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
 
   const fetchPayments = useCallback(async () => {
@@ -277,7 +280,7 @@ export default function PaymentsList() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setInvoiceModalPayment(recentAddedPayment)}
@@ -286,6 +289,17 @@ export default function PaymentsList() {
               <Send className="h-3.5 w-3.5" />
               Send Payment Invoice Mail
             </button>
+            {(Number(recentAddedPayment.balanceDue) > 0 ||
+              recentAddedPayment.status === "pending") && (
+              <button
+                type="button"
+                onClick={() => setAlertModalPayment(recentAddedPayment)}
+                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-700 transition-colors"
+              >
+                <BellRing className="h-3.5 w-3.5" />
+                Send Pending Payment Alert
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setRecentAddedPayment(null)}
@@ -570,6 +584,21 @@ export default function PaymentsList() {
                             </span>
                           )}
                         </div>
+                        {payment.pendingAlertSent && (
+                          <div>
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-200"
+                              title={
+                                payment.pendingAlertSentAt
+                                  ? `Alert sent on ${new Date(payment.pendingAlertSentAt).toLocaleString("en-IN")}`
+                                  : "Pending Alert Sent"
+                              }
+                            >
+                              <BellRing className="h-3 w-3 text-amber-600" />
+                              Alert Sent ({payment.pendingAlertSentCount || 1}x)
+                            </span>
+                          </div>
+                        )}
                       </td>
 
                       {/* Actions */}
@@ -586,6 +615,23 @@ export default function PaymentsList() {
                           >
                             <Send className="h-3.5 w-3.5" />
                             {payment.invoiceSent ? "Resend Invoice Mail" : "Send Payment Invoice Mail"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setAlertModalPayment(payment)}
+                            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                              Number(payment.balanceDue) > 0 || payment.status === "pending"
+                                ? payment.pendingAlertSent
+                                  ? "border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                  : "bg-amber-600 text-white hover:bg-amber-700 shadow-xs"
+                                : "border border-gray-200 bg-white text-gray-600 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800"
+                            }`}
+                          >
+                            <BellRing className="h-3.5 w-3.5" />
+                            {payment.pendingAlertSent
+                              ? "Resend Pending Alert"
+                              : "Send Pending Payment Alert"}
                           </button>
 
                           <button
@@ -665,6 +711,14 @@ export default function PaymentsList() {
         payment={invoiceModalPayment}
         onClose={() => setInvoiceModalPayment(null)}
         onEmailSent={handleInvoiceSent}
+      />
+
+      {/* Send Pending Payment Alert Preview Popup */}
+      <SendPendingAlertModal
+        open={Boolean(alertModalPayment)}
+        payment={alertModalPayment}
+        onClose={() => setAlertModalPayment(null)}
+        onAlertSent={handleInvoiceSent}
       />
     </div>
   );

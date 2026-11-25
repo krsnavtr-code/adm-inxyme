@@ -8,9 +8,11 @@ import {
   CheckCircle2,
   FileText,
   Mail,
+  BellRing,
 } from "lucide-react";
 import paymentApi from "../../api/paymentApi";
 import SendInvoiceMailModal from "../../components/admin/payments/SendInvoiceMailModal";
+import SendPendingAlertModal from "../../components/admin/payments/SendPendingAlertModal";
 import {
   formatCurrencyINR,
   getPaymentMethodLabel,
@@ -25,6 +27,7 @@ export default function PaymentDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isPendingAlertModalOpen, setIsPendingAlertModalOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
@@ -146,6 +149,23 @@ export default function PaymentDetails() {
 
           <button
             type="button"
+            onClick={() => setIsPendingAlertModalOpen(true)}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+              Number(payment.balanceDue) > 0 || payment.status === "pending"
+                ? payment.pendingAlertSent
+                  ? "border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100"
+                  : "bg-amber-600 text-white shadow-sm hover:bg-amber-700"
+                : "border border-gray-300 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-800"
+            }`}
+          >
+            <BellRing className="h-4 w-4" />
+            {payment.pendingAlertSent
+              ? "Resend Pending Payment Alert"
+              : "Send Pending Payment Alert"}
+          </button>
+
+          <button
+            type="button"
             onClick={() => navigate(-1)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -186,6 +206,22 @@ export default function PaymentDetails() {
           </div>
         </div>
       </div>
+
+      {/* Pending Alert Sent Status Banner */}
+      {payment.pendingAlertSent && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 flex items-center gap-3 text-sm text-amber-900">
+          <BellRing className="h-5 w-5 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-semibold">Pending Payment Alert Sent</span>{" "}
+            <span className="text-xs text-amber-800">
+              ({payment.pendingAlertSentCount || 1} time
+              {payment.pendingAlertSentCount > 1 ? "s" : ""}) on{" "}
+              {formatDate(payment.pendingAlertSentAt)} to{" "}
+              {payment.pendingAlertLastSentTo || payment.email}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Payment Details */}
@@ -362,6 +398,16 @@ export default function PaymentDetails() {
         payment={payment}
         onClose={() => setIsInvoiceModalOpen(false)}
         onEmailSent={(updated) => {
+          if (updated) setPayment(updated);
+        }}
+      />
+
+      {/* Send Pending Payment Alert Popup */}
+      <SendPendingAlertModal
+        open={isPendingAlertModalOpen}
+        payment={payment}
+        onClose={() => setIsPendingAlertModalOpen(false)}
+        onAlertSent={(updated) => {
           if (updated) setPayment(updated);
         }}
       />
