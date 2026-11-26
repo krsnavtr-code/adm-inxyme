@@ -21,10 +21,72 @@ import {
   FiPlus,
   FiCheck,
   FiAlertCircle,
+  FiExternalLink,
 } from "react-icons/fi";
+
+const normalizeBrochureAttachmentPath = (url) => {
+  if (!url) return "";
+  let clean = String(url).trim().split(/[?#]/)[0];
+  if (/^https?:\/\//i.test(clean)) {
+    try {
+      clean = new URL(clean).pathname;
+    } catch {
+      return "";
+    }
+  }
+  const apiUploadMatch = clean.match(/^\/?api\/upload\/file\/([^/?#]+)$/i);
+  if (apiUploadMatch && apiUploadMatch[1]) {
+    try {
+      return `/uploads/${decodeURIComponent(apiUploadMatch[1])}`;
+    } catch {
+      return `/uploads/${apiUploadMatch[1]}`;
+    }
+  }
+  return clean.startsWith("/") ? clean : `/${clean}`;
+};
+
+const buildCourseBrochureViewUrl = (url, courseId) => {
+  if (!url) return "";
+  const rawApiBase = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+  const rawSiteBase = String(import.meta.env.VITE_API_URL || "").trim();
+  const origin =
+    (rawSiteBase || rawApiBase.replace(/\/api\/?$/i, "") || window.location.origin).replace(
+      /\/+$/,
+      "",
+    );
+  const apiBase = (rawApiBase || `${origin}/api`).replace(/\/+$/, "");
+
+  const cleanPath = normalizeBrochureAttachmentPath(url);
+  const uploadsMatch = cleanPath.match(/^\/uploads\/(.+)$/i);
+  if (uploadsMatch && uploadsMatch[1]) {
+    const fileSegment = uploadsMatch[1].split("/").filter(Boolean).pop();
+    if (fileSegment) {
+      return `${apiBase}/upload/file/${encodeURIComponent(fileSegment)}`;
+    }
+  }
+  if (courseId) {
+    return `${apiBase}/courses/${encodeURIComponent(courseId)}/download-brochure`;
+  }
+  return `${origin}${cleanPath}`;
+};
+
+const getDefaultCourseBrochureMessage = (title) => {
+  const safeTitle = String(title || "this course")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+  <p style="margin: 0 0 8px 0;">Dear Learner,</p>
+  <p style="margin: 0 0 8px 0;">Greetings from <strong><span style="color: #4f46e5;">Inxyme</span></strong>!</p>
+  <p style="margin: 0 0 8px 0;">Please find attached the official course brochure for <strong>${safeTitle}</strong>.</p>
+  <p style="margin: 0 0 8px 0;">Feel free to reply to this email or contact us at info@inxyme.com if you have any questions about curriculum, schedules, or enrollment.</p>
+  <p style="margin: 0 0 4px 0;">Warm regards,<br/>Team <strong><span style="color: #4f46e5;">Inxyme</span></strong></p>
+</div>`;
+};
 
 const SendBrochure = () => {
   const [pdfs, setPdfs] = useState({ generated: [], uploaded: [] });
+  const [courseBrochures, setCourseBrochures] = useState([]);
   const [selectedPdfs, setSelectedPdfs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [email, setEmail] = useState("");
@@ -40,7 +102,31 @@ const SendBrochure = () => {
   const [selectedVideos, setSelectedVideos] = useState([]);
   const [videoSearchTerm, setVideoSearchTerm] = useState("");
   const [showVideoUpload, setShowVideoUpload] = useState(false);
+  const lastAutoCourseMessageRef = useRef("");
+  const lastAutoCourseSubjectRef = useRef("");
+  const tabRefs = useRef({});
   const navigate = useNavigate();
+
+  const BROCHURE_TABS = ["generated", "uploaded", "course"];
+
+  const handleTabKeyDown = (e, currentIndex) => {
+    let nextIndex = null;
+    if (e.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % BROCHURE_TABS.length;
+    } else if (e.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + BROCHURE_TABS.length) % BROCHURE_TABS.length;
+    } else if (e.key === "Home") {
+      nextIndex = 0;
+    } else if (e.key === "End") {
+      nextIndex = BROCHURE_TABS.length - 1;
+    }
+    if (nextIndex !== null) {
+      e.preventDefault();
+      const nextTab = BROCHURE_TABS[nextIndex];
+      setActiveTab(nextTab);
+      tabRefs.current[nextTab]?.focus();
+    }
+  };
 
   // Handle successful video upload
   const handleVideoUploadSuccess = (newVideo) => {
@@ -282,25 +368,71 @@ const SendBrochure = () => {
   }, [videos, videoSearchTerm]);
 
   useEffect(() => {
-    const fetchPdfs = async () => {
+    const fetchBrochuresAndCourses = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/pdfs");
-        const generated = response.data.filter(
-          (pdf) => pdf.type === "generated",
-        );
-        const uploaded = response.data.filter((pdf) => pdf.type === "uploaded");
-        setPdfs({ generated, uploaded });
-      } catch (error) {
-        console.error("Error fetching PDFs:", error);
-        toast.error("Failed to load PDFs. Please try again later.");
+        const [pdfsResult, coursesResult] = await Promise.allSettled([
+          api.get("/pdfs"),
+          api.get("/courses", {
+            params: {
+              all: "true",
+              fields: "title,brochureUrl,slug,category,isPublished,updatedAt,createdAt",
+            },
+          }),
+        ]);
+
+        if (pdfsResult.status === "fulfilled") {
+          const list = Array.isArray(pdfsResult.value?.data) ? pdfsResult.value.data : [];
+          const generated = list.filter((pdf) => pdf.type === "generated");
+          const uploaded = list.filter((pdf) => pdf.type === "uploaded");
+          setPdfs({ generated, uploaded });
+        } else {
+          console.error("Error fetching PDFs:", pdfsResult.reason);
+          toast.error("Failed to load PDFs. Please try again later.");
+        }
+
+        if (coursesResult.status === "fulfilled") {
+          const rawCourses = coursesResult.value?.data;
+          const courseList = Array.isArray(rawCourses)
+            ? rawCourses
+            : Array.isArray(rawCourses?.data)
+            ? rawCourses.data
+            : [];
+
+          const mappedCourseBrochures = courseList
+            .filter((course) => course?.brochureUrl && String(course.brochureUrl).trim() !== "")
+            .map((course) => {
+              const attachPath = normalizeBrochureAttachmentPath(course.brochureUrl);
+              const fileName = attachPath.split("/").filter(Boolean).pop() || "brochure.pdf";
+              return {
+                id: course._id,
+                courseTitle: course.title || "Untitled Course",
+                categoryName: course.category?.name || "",
+                isPublished: course.isPublished !== false,
+                name: course.title || fileName,
+                fileName,
+                attachmentName: `${course.title || fileName}_Brochure.pdf`,
+                path: attachPath,
+                viewUrl: buildCourseBrochureViewUrl(course.brochureUrl, course._id),
+                type: "course",
+                size: 0,
+                createdAt: course.updatedAt || course.createdAt || null,
+              };
+            })
+            .sort((a, b) => a.courseTitle.localeCompare(b.courseTitle));
+
+          setCourseBrochures(mappedCourseBrochures);
+        } else {
+          console.error("Error fetching course brochures:", coursesResult.reason);
+          toast.error("Failed to load course brochures.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPdfs();
-  }, [activeTab]);
+    fetchBrochuresAndCourses();
+  }, []);
 
   const handlePdfSelection = (e) => {
     const selectedOptions = Array.from(
@@ -310,18 +442,59 @@ const SendBrochure = () => {
     setSelectedPdfs(selectedOptions);
   };
 
+  const handleCourseBrochureToggle = (item) => {
+    const isAlreadySelected = selectedPdfs.includes(item.path);
+    const nextSelected = isAlreadySelected
+      ? selectedPdfs.filter((p) => p !== item.path)
+      : [...selectedPdfs, item.path];
+
+    setSelectedPdfs(nextSelected);
+
+    if (!isAlreadySelected) {
+      setCourseName(item.courseTitle);
+
+      if (
+        !subject ||
+        subject === "Course Brochure" ||
+        subject === lastAutoCourseSubjectRef.current
+      ) {
+        const nextSubject = `Course Brochure – ${item.courseTitle}`;
+        lastAutoCourseSubjectRef.current = nextSubject;
+        setSubject(nextSubject);
+      }
+
+      if (
+        selectedTemplate === "custom" &&
+        (!message.trim() ||
+          message === lastAutoCourseMessageRef.current ||
+          message.trim() === messageTemplates.custom.content.trim())
+      ) {
+        const nextMessage = getDefaultCourseBrochureMessage(item.courseTitle);
+        lastAutoCourseMessageRef.current = nextMessage;
+        setMessage(nextMessage);
+      }
+    }
+  };
+
   const filteredPdfs = useMemo(() => {
     const currentPdfs =
-      activeTab === "generated" ? pdfs.generated : pdfs.uploaded;
+      activeTab === "generated"
+        ? pdfs.generated
+        : activeTab === "uploaded"
+        ? pdfs.uploaded
+        : courseBrochures;
     if (!searchTerm.trim()) return currentPdfs;
 
     const term = searchTerm.toLowerCase();
     return currentPdfs.filter(
       (pdf) =>
-        pdf.name.toLowerCase().includes(term) ||
-        pdf.path.toLowerCase().includes(term),
+        (pdf.name || "").toLowerCase().includes(term) ||
+        (pdf.courseTitle || "").toLowerCase().includes(term) ||
+        (pdf.fileName || "").toLowerCase().includes(term) ||
+        (pdf.categoryName || "").toLowerCase().includes(term) ||
+        (pdf.path || "").toLowerCase().includes(term),
     );
-  }, [activeTab, pdfs, searchTerm]);
+  }, [activeTab, pdfs, courseBrochures, searchTerm]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -345,10 +518,10 @@ const SendBrochure = () => {
       setSending(true);
 
       // Get the selected PDF details
-      const allPdfs = [...pdfs.generated, ...pdfs.uploaded];
-      const selectedPdfDetails = allPdfs.filter((pdf) =>
-        selectedPdfs.includes(pdf.path),
-      );
+      const allPdfs = [...pdfs.generated, ...pdfs.uploaded, ...courseBrochures];
+      const selectedPdfDetails = selectedPdfs
+        .map((selectedPath) => allPdfs.find((pdf) => pdf.path === selectedPath))
+        .filter(Boolean);
 
       // Prepare request data with both PDFs and videos
       const requestData = {
@@ -363,6 +536,7 @@ const SendBrochure = () => {
         templateUsed: selectedTemplate,
         pdfDetails: selectedPdfDetails.map((pdf) => ({
           name: pdf.name,
+          attachmentName: pdf.attachmentName || undefined,
           path: pdf.path,
           type: pdf.type,
           size: pdf.size,
@@ -433,6 +607,8 @@ const SendBrochure = () => {
       setVideoUrl("");
       setSubject("");
       setMessage("");
+      lastAutoCourseSubjectRef.current = "";
+      lastAutoCourseMessageRef.current = "";
       setSelectedTemplate("custom");
       setSelectedVideos([]);
       setVideoSearchTerm("");
@@ -440,10 +616,10 @@ const SendBrochure = () => {
       console.error("Error sending brochure:", error);
       // Try to save failed attempt to database
       try {
-        const allPdfs = [...pdfs.generated, ...pdfs.uploaded];
-        const selectedPdfDetails = allPdfs.filter((pdf) =>
-          selectedPdfs.includes(pdf.path),
-        );
+        const allPdfs = [...pdfs.generated, ...pdfs.uploaded, ...courseBrochures];
+        const selectedPdfDetails = selectedPdfs
+          .map((selectedPath) => allPdfs.find((pdf) => pdf.path === selectedPath))
+          .filter(Boolean);
 
         await api.post("/emails/save-email-record", {
           to: email.trim(),
@@ -720,7 +896,10 @@ const SendBrochure = () => {
 
   // Update message when template or variables change
   useEffect(() => {
-    if (activeTab === "uploaded") {
+    if (
+      (activeTab === "uploaded" || activeTab === "course") &&
+      selectedTemplate !== "custom"
+    ) {
       const template = messageTemplates[selectedTemplate];
 
       // Replace variables in content
@@ -742,7 +921,8 @@ const SendBrochure = () => {
         subject === "" ||
         subject === "Course Brochure" ||
         subject.startsWith("About ") ||
-        subject.startsWith("Following up")
+        subject.startsWith("Following up") ||
+        subject.startsWith("Course Brochure –")
       ) {
         setSubject(updatedSubject);
       }
@@ -778,9 +958,15 @@ const SendBrochure = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   };
 
-  const hasPdfs =
-    (activeTab === "generated" ? pdfs.generated : pdfs.uploaded).length > 0;
-  const totalPdfs = pdfs.generated.length + pdfs.uploaded.length;
+  const currentTabList =
+    activeTab === "generated"
+      ? pdfs.generated
+      : activeTab === "uploaded"
+      ? pdfs.uploaded
+      : courseBrochures;
+  const hasPdfs = currentTabList.length > 0;
+  const totalPdfs =
+    pdfs.generated.length + pdfs.uploaded.length + courseBrochures.length;
   const selectedCount = selectedPdfs.length;
 
   return (
@@ -817,19 +1003,31 @@ const SendBrochure = () => {
 
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+            <div
+              role="tablist"
+              aria-label="Brochure categories"
+              className="flex -mb-px overflow-x-auto"
+            >
               <button
+                ref={(el) => {
+                  tabRefs.current.generated = el;
+                }}
+                id="tab-generated"
                 type="button"
+                role="tab"
+                tabIndex={activeTab === "generated" ? 0 : -1}
+                aria-selected={activeTab === "generated"}
                 onClick={() => setActiveTab("generated")}
-                className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+                onKeyDown={(e) => handleTabKeyDown(e, 0)}
+                className={`relative flex-1 flex-none sm:flex-1 py-4 px-3 text-center border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === "generated"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center justify-center">
-                  <FiFileText className="mr-2" />
-                  Generated Brochures
+                  <FiFileText className="mr-2 shrink-0" aria-hidden="true" />
+                  <span>Generated Brochures</span>
                   {pdfs.generated.length > 0 && (
                     <span className="ml-2 bg-gray-200 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                       {pdfs.generated.length}
@@ -838,17 +1036,25 @@ const SendBrochure = () => {
                 </div>
               </button>
               <button
+                ref={(el) => {
+                  tabRefs.current.uploaded = el;
+                }}
+                id="tab-uploaded"
                 type="button"
+                role="tab"
+                tabIndex={activeTab === "uploaded" ? 0 : -1}
+                aria-selected={activeTab === "uploaded"}
                 onClick={() => setActiveTab("uploaded")}
-                className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+                onKeyDown={(e) => handleTabKeyDown(e, 1)}
+                className={`relative flex-1 flex-none sm:flex-1 py-4 px-3 text-center border-b-2 font-medium text-sm whitespace-nowrap ${
                   activeTab === "uploaded"
                     ? "border-indigo-500 text-indigo-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <div className="flex items-center justify-center">
-                  <FiUpload className="mr-2" />
-                  Uploaded Brochures
+                  <FiUpload className="mr-2 shrink-0" aria-hidden="true" />
+                  <span>Uploaded Brochures</span>
                   {pdfs.uploaded.length > 0 && (
                     <span className="ml-2 bg-gray-200 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
                       {pdfs.uploaded.length}
@@ -856,35 +1062,81 @@ const SendBrochure = () => {
                   )}
                 </div>
               </button>
-            </nav>
+              <button
+                ref={(el) => {
+                  tabRefs.current.course = el;
+                }}
+                id="tab-course"
+                type="button"
+                role="tab"
+                tabIndex={activeTab === "course" ? 0 : -1}
+                aria-selected={activeTab === "course"}
+                onClick={() => setActiveTab("course")}
+                onKeyDown={(e) => handleTabKeyDown(e, 2)}
+                className={`relative flex-1 flex-none sm:flex-1 py-4 px-3 text-center border-b-2 font-medium text-sm whitespace-nowrap ${
+                  activeTab === "course"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center justify-center">
+                  <FiBook className="mr-2 shrink-0" aria-hidden="true" />
+                  <span>Course Brochures</span>
+                  {courseBrochures.length > 0 && (
+                    <span className="ml-2 bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                      {courseBrochures.length}
+                    </span>
+                  )}
+                </div>
+              </button>
+            </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          role="tabpanel"
+          aria-labelledby={`tab-${activeTab}`}
+          className="p-6 space-y-6"
+        >
           <div className="space-y-2">
-            <label
-              htmlFor="pdf"
-              className="block text-sm font-medium text-gray-700 flex items-center"
-            >
-              {activeTab === "generated" ? (
-                <FiFileText className="mr-2" />
-              ) : (
-                <FiUpload className="mr-2" />
-              )}
-              {activeTab === "generated"
-                ? "Select Generated Brochure"
-                : "Select Uploaded Brochure"}
-            </label>
+            {activeTab === "course" ? (
+              <span
+                id="brochure-picker-label"
+                className="block text-sm font-medium text-gray-700 flex items-center"
+              >
+                <FiBook className="mr-2" aria-hidden="true" />
+                Select Course Brochure
+              </span>
+            ) : (
+              <label
+                htmlFor="pdf"
+                className="block text-sm font-medium text-gray-700 flex items-center"
+              >
+                {activeTab === "generated" ? (
+                  <FiFileText className="mr-2" aria-hidden="true" />
+                ) : (
+                  <FiUpload className="mr-2" aria-hidden="true" />
+                )}
+                {activeTab === "generated"
+                  ? "Select Generated Brochure"
+                  : "Select Uploaded Brochure"}
+              </label>
+            )}
 
             {/* Select Brochure */}
             <div className="space-y-4">
               {/* Search Box */}
               <div className="relative">
+                <label htmlFor="course-brochure-search" className="sr-only">
+                  Search brochures
+                </label>
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <svg
                     className="h-5 w-5 text-gray-400"
                     fill="currentColor"
                     viewBox="0 0 20 20"
+                    aria-hidden="true"
                   >
                     <path
                       fillRule="evenodd"
@@ -894,9 +1146,17 @@ const SendBrochure = () => {
                   </svg>
                 </div>
                 <input
-                  type="text"
+                  id="course-brochure-search"
+                  type="search"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
                   className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 text-black placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="Search brochures..."
+                  placeholder={
+                    activeTab === "course"
+                      ? "Search courses or brochure filenames..."
+                      : "Search brochures..."
+                  }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -907,29 +1167,119 @@ const SendBrochure = () => {
                   <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                 </div>
               ) : hasPdfs ? (
-                <select
-                  id="pdf"
-                  multiple
-                  size={Math.min(6, Math.max(3, filteredPdfs.length))}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                  value={selectedPdfs}
-                  onChange={handlePdfSelection}
-                  required
-                >
-                  {filteredPdfs.map((pdf) => (
-                    <option key={pdf.path} value={pdf.path}>
-                      {pdf.name.replace(/_/g, " ").replace(/\.pdf$/i, "")} •{" "}
-                      {formatFileSize(pdf.size)} •{" "}
-                      {new Date(pdf.createdAt).toLocaleDateString()}
-                    </option>
-                  ))}
-                </select>
+                activeTab === "course" ? (
+                  filteredPdfs.length > 0 ? (
+                    <fieldset
+                      aria-labelledby="brochure-picker-label"
+                      className="border border-gray-200 rounded-md divide-y divide-gray-200 max-h-72 overflow-y-auto overscroll-contain bg-white"
+                    >
+                      <legend className="sr-only">Available course brochures</legend>
+                      {filteredPdfs.map((item) => {
+                        const isChecked = selectedPdfs.includes(item.path);
+                        const checkboxId = `course-brochure-${item.id}`;
+                        return (
+                          <div
+                            key={item.id}
+                            className={`flex items-center justify-between gap-3 px-3.5 py-2.5 transition-colors ${
+                              isChecked ? "bg-indigo-50/80" : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <label
+                              htmlFor={checkboxId}
+                              className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer"
+                            >
+                              <input
+                                id={checkboxId}
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleCourseBrochureToggle(item)}
+                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    {item.courseTitle}
+                                  </span>
+                                  {item.categoryName && (
+                                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                                      {item.categoryName}
+                                    </span>
+                                  )}
+                                  {!item.isPublished && (
+                                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
+                                      Draft
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs font-mono text-gray-500 truncate mt-0.5">
+                                  {item.fileName}
+                                </p>
+                              </div>
+                            </label>
+                            {item.viewUrl && (
+                              <a
+                                href={item.viewUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 shrink-0"
+                              >
+                                <FiExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                                View
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </fieldset>
+                  ) : (
+                    <div className="text-center py-6 bg-gray-50 rounded-md border border-gray-200">
+                      <p className="text-sm text-gray-500">
+                        No course brochures match &ldquo;{searchTerm}&rdquo;.
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <select
+                    id="pdf"
+                    multiple
+                    size={Math.min(6, Math.max(3, filteredPdfs.length))}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    value={selectedPdfs}
+                    onChange={handlePdfSelection}
+                    required
+                  >
+                    {filteredPdfs.map((pdf) => (
+                      <option key={pdf.path} value={pdf.path}>
+                        {pdf.name.replace(/_/g, " ").replace(/\.pdf$/i, "")} •{" "}
+                        {formatFileSize(pdf.size)} •{" "}
+                        {new Date(pdf.createdAt).toLocaleDateString()}
+                      </option>
+                    ))}
+                  </select>
+                )
               ) : (
                 <div className="text-center py-6 bg-gray-50 rounded-md border-2 border-dashed border-gray-300">
                   <FiFileText className="mx-auto h-12 w-12 text-gray-400" />
                   <p className="mt-2 text-sm text-gray-500">
-                    No {activeTab} brochures found.
+                    {activeTab === "course"
+                      ? "No courses with uploaded brochures found."
+                      : `No ${activeTab} brochures found.`}
                   </p>
+                </div>
+              )}
+
+              {selectedCount > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-indigo-100 bg-indigo-50/70 px-3 py-2 text-xs text-indigo-900">
+                  <span>
+                    <strong>{selectedCount}</strong> brochure{selectedCount !== 1 ? "s" : ""} selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPdfs([])}
+                    className="font-semibold text-indigo-700 hover:text-indigo-900 underline"
+                  >
+                    Clear selection
+                  </button>
                 </div>
               )}
             </div>
@@ -1022,6 +1372,11 @@ const SendBrochure = () => {
                   <input
                     type="email"
                     id="email"
+                    name="email"
+                    autoComplete="email"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
                     className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -1029,14 +1384,14 @@ const SendBrochure = () => {
                     required
                   />
                 </div>
-                {activeTab === "uploaded" && (
+                {(activeTab === "uploaded" || activeTab === "course") && (
                   <div className="space-y-2">
                     <label
                       htmlFor="studentName"
                       className="block text-sm font-medium text-gray-700 flex items-center"
                     >
                       <FiUser className="mr-2" />
-                      Recipient Name
+                      Recipient Name {activeTab === "course" ? "(optional)" : ""}
                     </label>
                     <input
                       type="text"
@@ -1051,7 +1406,7 @@ const SendBrochure = () => {
                 )}
               </div>
 
-              {activeTab === "uploaded" && (
+              {(activeTab === "uploaded" || activeTab === "course") && (
                 <div className="space-y-2">
                   <label
                     htmlFor="courseName"
@@ -1071,7 +1426,7 @@ const SendBrochure = () => {
                   />
                 </div>
               )}
-              {activeTab === "uploaded" && (
+              {(activeTab === "uploaded" || activeTab === "course") && (
                 <div className="space-y-2">
                   <label
                     htmlFor="videoUrl"
