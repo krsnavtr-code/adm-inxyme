@@ -197,36 +197,89 @@ const FileUploadInput = ({ onFileSelect, thumbnail, onRemove }) => {
   );
 };
 
-const resolveBrochureUrl = (url) => {
-  if (!url) return "";
+const getServerOrigins = () => {
+  const rawApiBase = String(import.meta.env.VITE_API_BASE_URL || "").trim();
+  const rawSiteBase = String(import.meta.env.VITE_API_URL || "").trim();
+
+  const normalizeOrigin = (val) =>
+    val
+      .replace(/\/api\/?$/i, "")
+      .replace(/^http:\/\/(?:www\.)?inxyme\.com/i, "https://www.inxyme.com")
+      .replace(/^https:\/\/inxyme\.com/i, "https://www.inxyme.com")
+      .replace(/\/+$/, "");
+
+  const origin =
+    (rawSiteBase && normalizeOrigin(rawSiteBase)) ||
+    (rawApiBase && normalizeOrigin(rawApiBase)) ||
+    window.location.origin;
+
+  const apiBase = rawApiBase
+    ? rawApiBase
+        .replace(/^http:\/\/(?:www\.)?inxyme\.com/i, "https://www.inxyme.com")
+        .replace(/^https:\/\/inxyme\.com/i, "https://www.inxyme.com")
+        .replace(/\/+$/, "")
+    : `${origin}/api`;
+
+  return { origin, apiBase };
+};
+
+const getBrochureUrlCandidates = (url, courseId = "") => {
+  if (!url) return [];
   const trimmed = String(url).trim();
-  if (!trimmed) return "";
+  if (!trimmed) return [];
 
   try {
     if (/^(blob:|data:)/i.test(trimmed)) {
-      return trimmed;
+      return [trimmed];
     }
 
-    if (/^https?:\/\//i.test(trimmed)) {
-      return trimmed
+    const { origin, apiBase } = getServerOrigins();
+    const candidates = [];
+    const addUnique = (candidate) => {
+      if (candidate && !candidates.includes(candidate)) {
+        candidates.push(candidate);
+      }
+    };
+
+    const normalizeInxymeUrl = (val) =>
+      val
         .replace(/^http:\/\/(?:www\.)?inxyme\.com/i, "https://www.inxyme.com")
         .replace(/^https:\/\/inxyme\.com/i, "https://www.inxyme.com");
+
+    // Extract /uploads/<filename> whether stored as relative path or full URL,
+    // because Next.js serves non-/api routes and returns 404 for /uploads/*.
+    const uploadsMatch = trimmed.match(/^(?:https?:\/\/[^/]+)?\/?uploads\/([^?#]+)$/i);
+    if (uploadsMatch && uploadsMatch[1]) {
+      const uploadFile = uploadsMatch[1].replace(/^\/+/, "");
+      const fileSegment = uploadFile.split("/").filter(Boolean).pop();
+      if (fileSegment) {
+        addUnique(`${apiBase}/upload/file/${encodeURIComponent(decodeURIComponent(fileSegment))}`);
+      }
+    } else if (/^https?:\/\//i.test(trimmed)) {
+      addUnique(normalizeInxymeUrl(trimmed));
+    } else {
+      const normalizedPath = `/${trimmed.replace(/^\/+/, "")}`;
+      if (normalizedPath.startsWith("/api/")) {
+        addUnique(`${origin}${normalizedPath}`);
+      } else if (courseId) {
+        addUnique(`${apiBase}/courses/${encodeURIComponent(courseId)}/download-brochure`);
+      }
+      addUnique(`${origin}${normalizedPath}`);
     }
 
-    const rawBase =
-      import.meta.env.VITE_API_URL ||
-      (import.meta.env.VITE_API_BASE_URL
-        ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/?$/, "")
-        : "") ||
-      window.location.origin;
-    const baseUrl = String(rawBase).replace(/\/+$/, "");
-    const normalizedPath = `/${trimmed.replace(/^\/+/, "")}`;
-    return `${baseUrl}${normalizedPath}`;
+    if (courseId) {
+      addUnique(`${apiBase}/courses/${encodeURIComponent(courseId)}/download-brochure`);
+    }
+
+    return candidates;
   } catch (error) {
     console.error("Error creating brochure URL:", error);
-    return "";
+    return [];
   }
 };
+
+const resolveBrochureUrl = (url, courseId = "") =>
+  getBrochureUrlCandidates(url, courseId)[0] || "";
 
 const getPdfFileParts = (url, fallbackName = "course-brochure.pdf") => {
   const clean = String(url || "").split(/[?#]/)[0];
@@ -316,7 +369,7 @@ const PdfPreviewViewport = ({
 };
 
 // Component for PDF brochure upload & live inline preview
-const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
+const BrochureUploadInput = ({ onFileSelect, brochureUrl, courseId = "", onRemove }) => {
   const inputId = useId();
   const expandTitleId = useId();
 
@@ -327,14 +380,14 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState("");
   const [previewBlobUrl, setPreviewBlobUrl] = useState("");
-  const [useDirectFallback, setUseDirectFallback] = useState(false);
   const [pdfSize, setPdfSize] = useState(0);
 
   const remoteBlobUrlRef = useRef("");
   const localUploadedRef = useRef({ path: "", blobUrl: "", size: 0 });
   const abortControllerRef = useRef(null);
 
-  const fullBrochureUrl = resolveBrochureUrl(brochureUrl);
+  const brochureUrlCandidates = getBrochureUrlCandidates(brochureUrl, courseId);
+  const fullBrochureUrl = brochureUrlCandidates[0] || "";
   const { fileName, baseName, extension } = getPdfFileParts(brochureUrl);
   const formattedSize = formatPdfFileSize(pdfSize);
 
@@ -358,11 +411,10 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
         abortControllerRef.current.abort();
       }
 
-      if (!brochureUrl || !fullBrochureUrl) {
+      if (!brochureUrl || brochureUrlCandidates.length === 0) {
         revokeRemoteBlob();
         setPreviewBlobUrl("");
         setPreviewError("");
-        setUseDirectFallback(false);
         setPdfSize(0);
         setLoadingPreview(false);
         return;
@@ -378,7 +430,6 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
         setPreviewBlobUrl(localUploadedRef.current.blobUrl);
         setPdfSize(localUploadedRef.current.size);
         setPreviewError("");
-        setUseDirectFallback(false);
         setLoadingPreview(false);
         return;
       }
@@ -388,65 +439,82 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
 
       setLoadingPreview(true);
       setPreviewError("");
-      setUseDirectFallback(false);
 
       try {
-        const res = await fetch(fullBrochureUrl, {
-          signal: controller.signal,
-        });
+        let loadedBlob = null;
+        let lastErrorMessage = "Failed to load uploaded brochure PDF preview.";
 
-        if (!res.ok) {
-          throw new Error(`Uploaded brochure could not be loaded (HTTP ${res.status}).`);
+        for (const candidateUrl of brochureUrlCandidates) {
+          if (controller.signal.aborted) return;
+
+          try {
+            const res = await fetch(candidateUrl, {
+              signal: controller.signal,
+            });
+
+            if (!res.ok) {
+              lastErrorMessage = `Uploaded brochure could not be loaded (HTTP ${res.status}).`;
+              continue;
+            }
+
+            const rawBlob = await res.blob();
+            if (controller.signal.aborted) return;
+
+            if (!rawBlob || rawBlob.size === 0) {
+              lastErrorMessage = "Uploaded brochure PDF file appears to be empty.";
+              continue;
+            }
+
+            const headerText = await rawBlob.slice(0, 64).text();
+            if (controller.signal.aborted) return;
+
+            if (
+              rawBlob.type?.includes("text/html") ||
+              (!headerText.includes("%PDF-") && !rawBlob.type?.includes("pdf"))
+            ) {
+              lastErrorMessage = "Brochure endpoint returned HTML/non-PDF content instead of a PDF.";
+              continue;
+            }
+
+            loadedBlob =
+              rawBlob.type === "application/pdf"
+                ? rawBlob
+                : new Blob([rawBlob], { type: "application/pdf" });
+            break;
+          } catch (candidateErr) {
+            if (candidateErr?.name === "AbortError" || controller.signal.aborted) {
+              return;
+            }
+            lastErrorMessage = candidateErr?.message || lastErrorMessage;
+          }
         }
 
-        const rawBlob = await res.blob();
-        if (controller.signal.aborted) return;
-
-        if (!rawBlob || rawBlob.size === 0) {
-          throw new Error("Uploaded brochure PDF file appears to be empty.");
+        if (!loadedBlob) {
+          throw new Error(lastErrorMessage);
         }
 
-        const headerText = await rawBlob.slice(0, 5).text();
-        if (controller.signal.aborted) return;
-
-        if (
-          rawBlob.type?.includes("text/html") ||
-          (!headerText.startsWith("%PDF-") && !rawBlob.type?.includes("pdf"))
-        ) {
-          throw new Error("File at brochure URL is not a valid PDF document.");
-        }
-
-        const pdfBlob =
-          rawBlob.type === "application/pdf"
-            ? rawBlob
-            : new Blob([rawBlob], { type: "application/pdf" });
-
-        const nextObjectUrl = URL.createObjectURL(pdfBlob);
+        const nextObjectUrl = URL.createObjectURL(loadedBlob);
         revokeRemoteBlob();
         remoteBlobUrlRef.current = nextObjectUrl;
 
         setPreviewBlobUrl(nextObjectUrl);
-        setPdfSize(rawBlob.size);
+        setPdfSize(loadedBlob.size);
       } catch (err) {
         if (err?.name === "AbortError" || controller.signal.aborted) return;
 
-        // If CORS blocks fetch, fall back to framing the resolved PDF URL directly
-        if (err instanceof TypeError) {
-          revokeRemoteBlob();
-          setPreviewBlobUrl("");
-          setUseDirectFallback(true);
-          setPreviewError("");
-        } else {
-          console.error("Failed to load course brochure preview:", err);
-          setPreviewError(err?.message || "Failed to load uploaded brochure PDF preview.");
-        }
+        console.error("Failed to load course brochure preview:", err);
+        revokeRemoteBlob();
+        setPreviewBlobUrl("");
+        setPdfSize(0);
+        setPreviewError(err?.message || "Failed to load uploaded brochure PDF preview.");
       } finally {
         if (!controller.signal.aborted) {
           setLoadingPreview(false);
         }
       }
     },
-    [brochureUrl, fullBrochureUrl, revokeRemoteBlob],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [brochureUrl, courseId, revokeRemoteBlob],
   );
 
   useEffect(() => {
@@ -520,7 +588,6 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
       setPreviewBlobUrl(instantUrl);
       setPdfSize(file.size);
       setPreviewError("");
-      setUseDirectFallback(false);
       setShowPreview(true);
 
       onFileSelect(filePath);
@@ -549,7 +616,6 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
       revokeLocalBlob();
       setPreviewBlobUrl("");
       setPreviewError("");
-      setUseDirectFallback(false);
       setPdfSize(0);
       setIsExpanded(false);
 
@@ -567,8 +633,7 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
     }
   };
 
-  const effectivePreviewSrc =
-    previewBlobUrl || (useDirectFallback ? fullBrochureUrl : "");
+  const effectivePreviewSrc = previewBlobUrl;
 
   return (
     <div className="space-y-4">
@@ -667,7 +732,7 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
               </button>
 
               <a
-                href={fullBrochureUrl}
+                href={previewBlobUrl || fullBrochureUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
@@ -779,9 +844,9 @@ const BrochureUploadInput = ({ onFileSelect, brochureUrl, onRemove }) => {
             </h4>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {fullBrochureUrl && (
+            {(previewBlobUrl || fullBrochureUrl) && (
               <a
-                href={fullBrochureUrl}
+                href={previewBlobUrl || fullBrochureUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/20"
@@ -2266,6 +2331,7 @@ export const CourseForm = ({ isEdit = false }) => {
           <h3 className="text-lg font-semibold mb-4">Course Brochure</h3>
           <ErrorBoundary>
             <BrochureUploadInput
+              courseId={isEdit ? id : ""}
               onFileSelect={(url) => {
                 setBrochureFile(url);
                 setValue("brochureUrl", url, { shouldDirty: true });
