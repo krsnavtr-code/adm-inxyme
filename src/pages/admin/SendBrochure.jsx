@@ -70,17 +70,165 @@ const buildCourseBrochureViewUrl = (url, courseId) => {
   return `${origin}${cleanPath}`;
 };
 
-const getDefaultCourseBrochureMessage = (title) => {
-  const safeTitle = String(title || "this course")
+const escapeEmailHtml = (val) =>
+  String(val ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return `<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-  <p style="margin: 0 0 8px 0;">Dear Learner,</p>
-  <p style="margin: 0 0 8px 0;">Greetings from <strong><span style="color: #4f46e5;">Inxyme</span></strong>!</p>
-  <p style="margin: 0 0 8px 0;">Please find attached the official course brochure for <strong>${safeTitle}</strong>.</p>
-  <p style="margin: 0 0 8px 0;">Feel free to reply to this email or contact us at info@inxyme.com if you have any questions about curriculum, schedules, or enrollment.</p>
-  <p style="margin: 0 0 4px 0;">Warm regards,<br/>Team <strong><span style="color: #4f46e5;">Inxyme</span></strong></p>
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+const normalizeSafeHttpUrl = (val) => {
+  const trimmed = String(val || "").trim();
+  if (!trimmed) return "";
+  return /^https?:\/\/\S+$/i.test(trimmed) ? trimmed : "";
+};
+
+const sanitizeEmailHtmlFragment = (html) => {
+  if (!html) return "";
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(String(html), "text/html");
+    doc
+      .querySelectorAll("script, iframe, object, embed, link, meta, base")
+      .forEach((el) => el.remove());
+
+    doc.body.querySelectorAll("*").forEach((el) => {
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        const value = attr.value.trim();
+        if (name.startsWith("on")) {
+          el.removeAttribute(attr.name);
+        } else if (
+          (name === "href" || name === "src" || name === "xlink:href") &&
+          /^\s*javascript:/i.test(value)
+        ) {
+          el.removeAttribute(attr.name);
+        }
+      }
+    });
+
+    return doc.body.innerHTML;
+  } catch {
+    return escapeEmailHtml(html);
+  }
+};
+
+const formatEmailBodyHtml = (rawMessage) => {
+  const sanitized = sanitizeEmailHtmlFragment(rawMessage || "");
+  if (!sanitized) return "";
+
+  const hasBlockTags = /<(p|div|ul|ol|li|h[1-6]|table|br)\b/i.test(sanitized);
+  const withLineBreaks = hasLineBreaksHandled(sanitized, hasBlockTags);
+
+  return withLineBreaks
+    .replace(
+      /<p>/g,
+      '<p style="margin: 0 0 10px 0; line-height: 1.65; font-size: 14px; color: #1f2937;">',
+    )
+    .replace(
+      /<ul>/g,
+      '<ul style="margin: 8px 0 14px 20px; padding: 0; font-size: 14px; color: #1f2937;">',
+    )
+    .replace(
+      /<ol>/g,
+      '<ol style="margin: 8px 0 14px 20px; padding: 0; font-size: 14px; color: #1f2937;">',
+    )
+    .replace(
+      /<li>/g,
+      '<li style="margin-bottom: 6px; line-height: 1.55;">',
+    )
+    .replace(
+      /<h2>/g,
+      '<h2 style="font-size: 17px; font-weight: 700; margin: 16px 0 8px 0; color: #111827;">',
+    )
+    .replace(
+      /<h3>/g,
+      '<h3 style="font-size: 15px; font-weight: 700; margin: 14px 0 6px 0; color: #1e3a8a;">',
+    );
+};
+
+function hasLineBreaksHandled(html, hasBlockTags) {
+  if (!hasBlockTags) {
+    return html.replace(/\r?\n/g, "<br />");
+  }
+  return html.replace(/>\s*\r?\n\s*</g, "><");
+}
+
+const buildBrandedBrochureEmailHtml = ({
+  bodyHtml,
+  courseName = "",
+  videoUrl = "",
+  attachmentNames = [],
+  logoSrc = "https://www.inxyme.com/images/inxyme-logo.png",
+}) => {
+  const formattedBody =
+    formatEmailBodyHtml(bodyHtml) ||
+    '<p style="margin:0 0 10px 0;line-height:1.65;font-size:14px;color:#1f2937;">Please find attached the official Inxyme course brochure.</p>';
+  const cleanCourse = String(courseName || "").trim();
+  const safeVideoUrl = normalizeSafeHttpUrl(videoUrl);
+  const attachmentLabel =
+    attachmentNames.length > 0
+      ? attachmentNames.map((n) => escapeEmailHtml(n)).join(", ")
+      : "Official Course Brochure PDF";
+
+  return `<div style="margin:0;padding:20px 12px;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#111827;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;margin:0 auto;background-color:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 4px 18px rgba(15,23,42,0.06);">
+    <tr>
+      <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 100%);padding:20px 26px;color:#ffffff;border-bottom:3px solid #f47c26;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;">
+          <tr>
+            <td style="vertical-align:middle;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="background:#ffffff;border-radius:8px;padding:5px 9px;">
+                    <img src="${escapeEmailHtml(logoSrc)}" alt="Inxyme" height="34" style="display:block;height:34px;width:auto;" />
+                  </td>
+                  <td style="padding-left:14px;vertical-align:middle;">
+                    <div style="font-size:18px;font-weight:800;letter-spacing:0.3px;color:#ffffff;">Inxyme</div>
+                    <div style="font-size:12px;color:#bfdbfe;margin-top:2px;">Official Course Brochure &amp; Program Details</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+            <td style="text-align:right;vertical-align:middle;">
+              <span style="display:inline-block;padding:5px 11px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.06em;background-color:#eef2ff;color:#1e3a8a;border:1px solid #c7d2fe;">COURSE BROCHURE</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>${
+      cleanCourse
+        ? `<tr>
+      <td style="background-color:#eef2ff;padding:12px 26px;border-bottom:1px solid #e0e7ff;">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#4338ca;">Program Featured</div>
+        <div style="font-size:15px;font-weight:700;color:#0f172a;margin-top:2px;">${escapeEmailHtml(cleanCourse)}</div>
+      </td>
+    </tr>`
+        : ""
+    }<tr>
+      <td style="padding:26px;">
+        <div style="font-size:14px;line-height:1.65;color:#1f2937;">${formattedBody}</div>
+        <div style="margin-top:20px;background-color:#f8fafc;border:1px solid #cbd5e1;border-left:4px solid #4f46e5;border-radius:8px;padding:12px 16px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#4338ca;margin-bottom:3px;">Attached Brochure Document</div>
+          <div style="font-size:13px;font-weight:600;color:#0f172a;">&#128206; ${attachmentLabel}</div>
+        </div>
+        <div style="margin-top:22px;text-align:center;">
+          <a href="https://www.inxyme.com/courses" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#4f46e5;color:#ffffff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none;margin:4px;">Explore Courses on Inxyme</a>${
+            safeVideoUrl
+              ? `<a href="${escapeEmailHtml(safeVideoUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;background-color:#f47c26;color:#ffffff;font-size:13px;font-weight:700;padding:11px 22px;border-radius:8px;text-decoration:none;margin:4px;">Watch Demo Video</a>`
+              : ""
+          }
+        </div>
+      </td>
+    </tr>
+    <tr>
+      <td style="background-color:#f8fafc;padding:16px 26px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;text-align:center;">
+        <div style="color:#0f172a;font-weight:700;">Eklavya Centre of Excellence Pvt. Ltd. (Inxyme)</div>
+        <div style="margin-top:4px;">Support: <a href="mailto:info@inxyme.com" style="color:#4f46e5;text-decoration:none;">info@inxyme.com</a> &bull; +91 9891030303 &bull; <a href="https://www.inxyme.com" target="_blank" rel="noopener noreferrer" style="color:#4f46e5;text-decoration:none;">www.inxyme.com</a></div>
+      </td>
+    </tr>
+  </table>
 </div>`;
 };
 
@@ -95,6 +243,7 @@ const SendBrochure = () => {
   const [videoUrl, setVideoUrl] = useState("");
   const [subject, setSubject] = useState("Course Brochure");
   const [message, setMessage] = useState("");
+  const [useBrandedFrame, setUseBrandedFrame] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [activeTab, setActiveTab] = useState("generated");
@@ -469,9 +618,23 @@ const SendBrochure = () => {
           message === lastAutoCourseMessageRef.current ||
           message.trim() === messageTemplates.custom.content.trim())
       ) {
-        const nextMessage = getDefaultCourseBrochureMessage(item.courseTitle);
-        lastAutoCourseMessageRef.current = nextMessage;
-        setMessage(nextMessage);
+        const template = messageTemplates.professionalBrochure;
+        const resolvedMsg = renderTemplateText(template.content, {
+          studentName,
+          courseName: item.courseTitle,
+          videoUrl,
+        });
+        const resolvedSubj = renderTemplateText(template.subject, {
+          studentName,
+          courseName: item.courseTitle,
+          videoUrl,
+        });
+        lastAutoCourseMessageRef.current = resolvedMsg;
+        lastAutoCourseSubjectRef.current = resolvedSubj;
+        setSelectedTemplate("professionalBrochure");
+        setUseBrandedFrame(true);
+        setSubject(resolvedSubj);
+        setMessage(resolvedMsg);
       }
     }
   };
@@ -523,13 +686,25 @@ const SendBrochure = () => {
         .map((selectedPath) => allPdfs.find((pdf) => pdf.path === selectedPath))
         .filter(Boolean);
 
+      const emailPayloadHtml = useBrandedFrame
+        ? buildBrandedBrochureEmailHtml({
+            bodyHtml: message.trim(),
+            courseName: courseName.trim(),
+            videoUrl: videoUrl.trim(),
+            attachmentNames: selectedPdfDetails.map(
+              (pdf) => pdf.attachmentName || pdf.fileName || pdf.name,
+            ),
+            logoSrc: "https://www.inxyme.com/images/inxyme-logo.png",
+          })
+        : message.trim();
+
       // Prepare request data with both PDFs and videos
       const requestData = {
         pdfPaths: selectedPdfs,
         videoPaths: selectedVideos,
         email: email.trim(),
         subject: subject.trim() || "Course Brochure",
-        message: message.trim(),
+        message: emailPayloadHtml,
         studentName: studentName.trim(),
         courseName: courseName.trim(),
         videoUrl: videoUrl.trim(),
@@ -560,7 +735,7 @@ const SendBrochure = () => {
           await api.post("/emails/save-email-record", {
             to: email.trim(),
             subject: subject.trim() || "Course Brochure",
-            message: message.trim(),
+            message: emailPayloadHtml,
             studentName: studentName.trim(),
             courseName: courseName.trim(),
             videoUrl: videoUrl.trim(),
@@ -610,6 +785,7 @@ const SendBrochure = () => {
       lastAutoCourseSubjectRef.current = "";
       lastAutoCourseMessageRef.current = "";
       setSelectedTemplate("custom");
+      setUseBrandedFrame(false);
       setSelectedVideos([]);
       setVideoSearchTerm("");
     } catch (error) {
@@ -663,6 +839,11 @@ const SendBrochure = () => {
   Write Custom Email or Select The Email Template For send
 </div>
       `,
+      },
+      professionalBrochure: {
+        name: "Course Brochure (Professional)",
+        subject: `{{courseName}} – Official Course Brochure & Program Details | Inxyme`,
+        content: `<p>Dear <strong>{{studentName}}</strong>,</p><p>Warm greetings from <strong style="color:#4f46e5;">Inxyme</strong> (Eklavya Centre of Excellence Pvt. Ltd.).</p><p>Thank you for your interest in <strong>{{courseName}}</strong>. Please find attached our <strong>Official Course Brochure</strong> containing complete details about the curriculum, training methodology, and certification.</p><h3>Why Learn With Inxyme – {{courseName}}</h3><ul><li><strong>Live Interactive + Recorded Classes:</strong> Attend mentor-led live sessions with 24/7 access to session recordings.</li><li><strong>Certified Industry Practitioners:</strong> Learn practical workflows, real-world architecture, and industry best practices.</li><li><strong>Hands-On Projects &amp; Case Studies:</strong> Gain applied experience on live scenarios, assignments, and capstone projects.</li><li><strong>Practical Lab / Server Access:</strong> Dedicated practice environment for hands-on exercises and troubleshooting.</li><li><strong>Career Mentorship &amp; Placement Support:</strong> Dedicated resume review, mock interviews, and job-readiness guidance.</li><li><strong>Verified Inxyme Certification:</strong> Receive an official completion certificate upon finishing the program.</li></ul><h3>What Is Included in the Attached Brochure</h3><ul><li>Complete week-by-week &amp; module-wise syllabus breakdown</li><li>Tools, technologies, and job-ready skills you will master</li><li>Batch schedules (Weekday / Weekend options) and duration details</li><li>Eligibility, enrollment workflow, and scholarship / early-bird benefits</li></ul><p>We would be delighted to help you choose the right learning track. Simply reply to this email or connect with our <strong>Admissions &amp; Academic Advisory Team</strong> to book a <strong>free 1-on-1 counseling or live demo session</strong>.</p><p>Warm regards,<br/><strong style="color:#4f46e5;">Admissions &amp; Academic Advisory Team</strong><br/>Inxyme | Eklavya Centre of Excellence Pvt. Ltd.</p>`,
       },
       courseEnquiry: {
         name: "Course Enquiry",
@@ -894,59 +1075,66 @@ const SendBrochure = () => {
 
   const [selectedTemplate, setSelectedTemplate] = useState("custom");
 
+  const renderTemplateText = (rawText, vars) =>
+    String(rawText || "")
+      .replace(/\{\{studentName\}\}/g, (vars.studentName || "").trim() || "Learner")
+      .replace(/\{\{courseName\}\}/g, (vars.courseName || "").trim() || "this program")
+      .replace(/\{\{videoUrl\}\}/g, (vars.videoUrl || "").trim());
+
   // Update message when template or variables change
   useEffect(() => {
-    if (
-      (activeTab === "uploaded" || activeTab === "course") &&
-      selectedTemplate !== "custom"
-    ) {
+    if (selectedTemplate !== "custom") {
       const template = messageTemplates[selectedTemplate];
+      if (!template) return;
 
-      // Replace variables in content
-      let updatedContent = template.content
-        .replace(/\{\{studentName\}\}/g, studentName || "Student")
-        .replace(/\{\{courseName\}\}/g, courseName || "this course")
-        .replace(/\{\{videoUrl\}\}/g, videoUrl || "");
-
-      // Replace variables in subject
-      let updatedSubject = template.subject
-        .replace(/\{\{studentName\}\}/g, studentName || "Student")
-        .replace(/\{\{courseName\}\}/g, courseName || "this course")
-        .replace(/\{\{videoUrl\}\}/g, videoUrl || "");
+      const updatedContent = renderTemplateText(template.content, {
+        studentName,
+        courseName,
+        videoUrl,
+      });
+      const updatedSubject = renderTemplateText(template.subject, {
+        studentName,
+        courseName,
+        videoUrl,
+      });
 
       setMessage(updatedContent);
 
-      // Only update subject if it hasn't been manually modified or is empty
+      // Only update subject if it hasn't been manually modified or is auto/empty
       if (
         subject === "" ||
         subject === "Course Brochure" ||
         subject.startsWith("About ") ||
         subject.startsWith("Following up") ||
-        subject.startsWith("Course Brochure –")
+        subject.startsWith("Course Brochure –") ||
+        subject.includes("Official Course Brochure & Program Details")
       ) {
         setSubject(updatedSubject);
       }
     }
   }, [
-    activeTab,
     studentName,
     courseName,
     videoUrl,
     selectedTemplate,
     messageTemplates,
-    subject,
   ]);
 
   // Handle template change
   const handleTemplateChange = (e) => {
     const templateKey = e.target.value;
     setSelectedTemplate(templateKey);
+    setUseBrandedFrame(templateKey === "professionalBrochure");
 
-    // Only update message if not custom template
+    // Apply immediately with current studentName/courseName variables
     if (templateKey !== "custom") {
       const template = messageTemplates[templateKey];
-      setMessage(template.content);
-      setSubject(template.subject);
+      setMessage(
+        renderTemplateText(template.content, { studentName, courseName, videoUrl }),
+      );
+      setSubject(
+        renderTemplateText(template.subject, { studentName, courseName, videoUrl }),
+      );
     }
   };
 
@@ -1384,14 +1572,16 @@ const SendBrochure = () => {
                     required
                   />
                 </div>
-                {(activeTab === "uploaded" || activeTab === "course") && (
+                {(activeTab === "uploaded" ||
+                  activeTab === "course" ||
+                  selectedTemplate !== "custom") && (
                   <div className="space-y-2">
                     <label
                       htmlFor="studentName"
                       className="block text-sm font-medium text-gray-700 flex items-center"
                     >
                       <FiUser className="mr-2" />
-                      Recipient Name {activeTab === "course" ? "(optional)" : ""}
+                      Recipient Name {activeTab !== "uploaded" ? "(optional)" : ""}
                     </label>
                     <input
                       type="text"
@@ -1406,7 +1596,9 @@ const SendBrochure = () => {
                 )}
               </div>
 
-              {(activeTab === "uploaded" || activeTab === "course") && (
+              {(activeTab === "uploaded" ||
+                activeTab === "course" ||
+                selectedTemplate !== "custom") && (
                 <div className="space-y-2">
                   <label
                     htmlFor="courseName"
@@ -1449,14 +1641,18 @@ const SendBrochure = () => {
 
             <div className="space-y-4">
               <div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="mb-4 space-y-2">
+                  <label
+                    htmlFor="email-template-select"
+                    className="block text-sm font-medium text-gray-700"
+                  >
                     Select Email Template
                   </label>
                   <select
+                    id="email-template-select"
                     value={selectedTemplate}
                     onChange={handleTemplateChange}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                    className="w-full p-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white"
                   >
                     {Object.entries(messageTemplates).map(([key, template]) => (
                       <option key={key} value={key}>
@@ -1464,6 +1660,17 @@ const SendBrochure = () => {
                       </option>
                     ))}
                   </select>
+                  <label className="inline-flex items-center gap-2 pt-1 text-xs font-medium text-gray-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={useBrandedFrame}
+                      onChange={(e) => setUseBrandedFrame(e.target.checked)}
+                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span>
+                      Include Branded Inxyme Email Layout (Header, Attachment Card &amp; Official Footer)
+                    </span>
+                  </label>
                 </div>
 
                 <div>
@@ -1529,38 +1736,45 @@ const SendBrochure = () => {
                       }}
                     >
                       {message ? (
-                        <div
-                          className="email-preview"
-                          style={{
-                            backgroundColor: "#fff",
-                            padding: "16px",
-                            borderRadius: "6px",
-                            boxShadow: "0 0 6px rgba(0,0,0,0.05)",
-                          }}
-                          dangerouslySetInnerHTML={{
-                            __html: message
-                              .replace(/\n/g, "<br>")
-                              // Make sure paragraph spacing looks natural
-                              .replace(
-                                /<p>/g,
-                                '<p style="margin: 0 0 8px 0; line-height: 1.6; font-size: 14px;">',
-                              )
-                              // Make lists look clean
-                              .replace(
-                                /<ul>/g,
-                                '<ul style="margin: 8px 0 8px 20px; padding: 0; font-size: 14px;">',
-                              )
-                              .replace(
-                                /<li>/g,
-                                '<li style="margin-bottom: 4px; line-height: 1.5;">',
-                              )
-                              // Adjust heading styling for better hierarchy
-                              .replace(
-                                /<h3>/g,
-                                '<h3 style="font-size:16px; margin:12px 0 6px 0; color:#222;">',
-                              ),
-                          }}
-                        />
+                        useBrandedFrame ? (
+                          <div
+                            className="email-preview rounded-md overflow-hidden"
+                            dangerouslySetInnerHTML={{
+                              __html: buildBrandedBrochureEmailHtml({
+                                bodyHtml: message,
+                                courseName,
+                                videoUrl,
+                                attachmentNames: selectedPdfs.map((selectedPath) => {
+                                  const match = [
+                                    ...pdfs.generated,
+                                    ...pdfs.uploaded,
+                                    ...courseBrochures,
+                                  ].find((p) => p.path === selectedPath);
+                                  return (
+                                    match?.attachmentName ||
+                                    match?.fileName ||
+                                    match?.name ||
+                                    selectedPath.split("/").pop()
+                                  );
+                                }),
+                                logoSrc: "/inxyme-logo.png",
+                              }),
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="email-preview"
+                            style={{
+                              backgroundColor: "#fff",
+                              padding: "16px",
+                              borderRadius: "6px",
+                              boxShadow: "0 0 6px rgba(0,0,0,0.05)",
+                            }}
+                            dangerouslySetInnerHTML={{
+                              __html: formatEmailBodyHtml(message),
+                            }}
+                          />
+                        )
                       ) : (
                         <div className="text-gray-400 italic">
                           Your message will appear here...
