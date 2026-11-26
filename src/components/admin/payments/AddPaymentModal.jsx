@@ -530,9 +530,9 @@ export default function AddPaymentModal({
       computeGstBreakup(
         formData.paymentAmount,
         Number(formData.gstRate || 0),
-        formData.gstInclusive
+        true
       ),
-    [formData.paymentAmount, formData.gstRate, formData.gstInclusive]
+    [formData.paymentAmount, formData.gstRate]
   );
 
   const matchingPreviousPayments = useMemo(
@@ -737,7 +737,7 @@ export default function AddPaymentModal({
           : new Date().toISOString(),
         status: formData.status,
         gstRate: Number(formData.gstRate ?? 18),
-        gstInclusive: formData.gstInclusive,
+        gstInclusive: true,
         companyGstin: formData.companyGstin.trim().toUpperCase(),
         studentGstin: formData.studentGstin.trim().toUpperCase(),
         notes: formData.notes.trim(),
@@ -1172,7 +1172,7 @@ export default function AddPaymentModal({
                 htmlFor={`${fieldPrefix}-totalFee`}
                 className="block text-xs font-semibold text-gray-700 mb-1"
               >
-                Total Program Fee (₹) <span className="text-gray-400 font-normal">(auto)</span>
+                Total Program Fee (₹) <span className="text-gray-400 font-normal">(Incl. GST, auto)</span>
               </label>
               <input
                 id={`${fieldPrefix}-totalFee`}
@@ -1245,7 +1245,8 @@ export default function AddPaymentModal({
                 htmlFor={`${fieldPrefix}-paidAmount`}
                 className="block text-xs font-semibold text-gray-700 mb-1"
               >
-                Amount Received (₹) <span className="text-red-500">*</span>
+                Amount Received (₹) <span className="text-red-500">*</span>{" "}
+                <span className="text-emerald-700 font-medium">(Incl. GST)</span>
               </label>
               <div className="relative">
                 <IndianRupee className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
@@ -1280,6 +1281,9 @@ export default function AddPaymentModal({
                     {formatCurrencyINR(previouslyPaidAmount, true)} received)
                   </p>
                 )}
+              <p className="mt-1 text-[11px] text-emerald-700 font-medium">
+                GST already included in fee (no extra GST added)
+              </p>
             </div>
           </div>
 
@@ -1343,12 +1347,17 @@ export default function AddPaymentModal({
           {/* GST Breakup Live Summary + Optional Company GSTIN */}
           <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3.5 space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-900">
-                18% GST Inclusive Breakup Preview
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-900">
+                  {gstBreakup.gstRate}% GST Inclusive Breakup Preview
+                </span>
+                <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800 border border-emerald-200">
+                  Already Included in Fee (No Extra GST)
+                </span>
+              </div>
               <div className="flex items-center gap-3 text-xs">
                 <label htmlFor={`${fieldPrefix}-gstRate`} className="text-gray-600 font-medium">
-                  GST %:
+                  Included GST %:
                 </label>
                 <select
                   id={`${fieldPrefix}-gstRate`}
@@ -1357,9 +1366,9 @@ export default function AddPaymentModal({
                   onChange={(e) => handleFieldChange("gstRate", e.target.value)}
                   className="rounded border border-indigo-200 bg-white px-2 py-0.5 text-xs font-semibold text-gray-800"
                 >
-                  <option value="18">18% GST (Standard)</option>
-                  <option value="12">12% GST</option>
-                  <option value="5">5% GST</option>
+                  <option value="18">18% GST (Included)</option>
+                  <option value="12">12% GST (Included)</option>
+                  <option value="5">5% GST (Included)</option>
                   <option value="0">0% (No GST)</option>
                 </select>
               </div>
@@ -1367,7 +1376,7 @@ export default function AddPaymentModal({
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
               <div className="rounded-lg bg-white p-2 border border-indigo-100/80">
-                <span className="text-gray-500 block">Taxable Base</span>
+                <span className="text-gray-500 block">Taxable Base (Excl. GST)</span>
                 <span className="font-bold text-gray-900">
                   {formatCurrencyINR(gstBreakup.taxableValue, true)}
                 </span>
@@ -1385,7 +1394,7 @@ export default function AddPaymentModal({
                 </span>
               </div>
               <div className="rounded-lg bg-indigo-900 p-2 text-white">
-                <span className="text-indigo-200 block">Total Paid</span>
+                <span className="text-indigo-200 block">Total Paid (Incl. GST)</span>
                 <span className="font-extrabold">
                   {formatCurrencyINR(gstBreakup.grandTotal, true)}
                 </span>
