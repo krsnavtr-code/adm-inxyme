@@ -108,18 +108,17 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900">
-      <div className="flex h-screen bg-gray-100 text-gray-900">
-        {/* Sidebar */}
-        <div className="pb-8 bg-indigo-800 text-white w-64 flex-shrink-0 flex flex-col h-screen">
-          <div className="p-4 flex-shrink-0">
-            <h1 className="text-2xl font-bold text-indigo-100">Admin Panel</h1>
-            <p className="text-indigo-200 text-sm">
-              Welcome, {currentUser?.fullname || "Admin"}
-            </p>
-          </div>
+    <div className="flex min-h-dvh bg-gray-100 text-gray-900">
+      {/* Sticky Sidebar */}
+      <aside className="sticky top-0 h-dvh pb-8 bg-indigo-800 text-white w-64 flex-shrink-0 flex flex-col">
+        <div className="p-4 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-indigo-100">Admin Panel</h1>
+          <p className="text-indigo-200 text-sm">
+            Welcome, {currentUser?.fullname || "Admin"}
+          </p>
+        </div>
 
-          <nav className="flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto overscroll-contain">
             <div>
               {/* Dashboard - always show for admin users */}
               {hasPermission("dashboard") && (
@@ -1019,15 +1018,14 @@ const AdminLayout = () => {
                 </svg>
                 Logout
               </button>
-            </div>
-          </nav>
-        </div>
+          </div>
+        </nav>
+      </aside>
 
-        {/* Main Content */}
-        <div className="flex-1 overflow-auto p-6">
-          <Outlet />
-        </div>
-      </div>
+      {/* Main Content */}
+      <main className="flex-1 min-w-0 p-6">
+        <Outlet />
+      </main>
     </div>
   );
 };

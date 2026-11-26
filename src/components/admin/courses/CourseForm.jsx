@@ -1398,7 +1398,7 @@ export const CourseForm = ({ isEdit = false }) => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
@@ -1562,7 +1562,7 @@ export const CourseForm = ({ isEdit = false }) => {
                       "image",
                     ]}
                     placeholder="Enter course description..."
-                    className="h-64 bg-gray-300"
+                    className="bg-white rounded-md [&_.ql-container]:min-h-[160px] [&_.ql-editor]:min-h-[160px]"
                   />
                 )}
               />
@@ -1608,7 +1608,7 @@ export const CourseForm = ({ isEdit = false }) => {
                       "image",
                     ]}
                     placeholder="Enter information about this course in India..."
-                    className="h-64 bg-gray-300"
+                    className="bg-white rounded-md [&_.ql-container]:min-h-[160px] [&_.ql-editor]:min-h-[160px]"
                   />
                 )}
               />
@@ -2363,7 +2363,6 @@ export const CourseForm = ({ isEdit = false }) => {
           </button>
         </div>
       </form>
-      ;
     </div>
   );
 };
