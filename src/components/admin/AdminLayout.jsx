@@ -112,6 +112,16 @@ const AdminLayout = () => {
       {/* Sticky Sidebar */}
       <aside className="sticky top-0 h-dvh pb-8 bg-indigo-800 text-white w-64 flex-shrink-0 flex flex-col">
         <div className="p-4 flex-shrink-0">
+          <Link
+            to="/admin/dashboard"
+            className="inline-flex items-center bg-white rounded-xl px-3 py-1.5 mb-2.5 shadow-sm"
+          >
+            <img
+              src="/inxyme-logo.png"
+              alt="Inxyme"
+              className="h-7 w-auto object-contain"
+            />
+          </Link>
           <h1 className="text-2xl font-bold text-indigo-100">Admin Panel</h1>
           <p className="text-indigo-200 text-sm">
             Welcome, {currentUser?.fullname || "Admin"}
