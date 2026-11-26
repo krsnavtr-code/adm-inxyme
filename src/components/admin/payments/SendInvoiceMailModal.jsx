@@ -51,33 +51,42 @@ export default function SendInvoiceMailModal({
     setPdfError("");
 
     try {
-      const [previewRes, pdfBlob] = await Promise.all([
+      const [previewResult, pdfResult] = await Promise.allSettled([
         paymentApi.getInvoicePreview(paymentId),
         paymentApi.fetchInvoicePdfBlob(paymentId, false),
       ]);
 
-      if (previewRes?.success && previewRes.preview) {
+      if (
+        previewResult.status === "fulfilled" &&
+        previewResult.value?.success &&
+        previewResult.value.preview
+      ) {
+        const previewRes = previewResult.value;
         setToEmail(previewRes.preview.to || "");
         setSubject(previewRes.preview.subject || "");
         setWrittenMessage(previewRes.preview.writtenMessage || "");
         setPdfFilename(previewRes.preview.pdfFilename || "Invoice.pdf");
         setGstBreakup(previewRes.preview.gstBreakup || null);
+      } else if (previewResult.status === "rejected") {
+        console.error("Failed to load invoice text preview:", previewResult.reason);
+        toast.error("Failed to load email text preview");
       }
 
-      if (pdfBlob) {
-        const objectUrl = URL.createObjectURL(pdfBlob);
+      if (pdfResult.status === "fulfilled" && pdfResult.value) {
+        const objectUrl = URL.createObjectURL(pdfResult.value);
         setPdfBlobUrl((prev) => {
           if (prev) URL.revokeObjectURL(prev);
           return objectUrl;
         });
-      }
-    } catch (err) {
-      console.error("Failed to load invoice preview or PDF:", err);
-      setPdfError(
-        err.response?.data?.message ||
+      } else if (pdfResult.status === "rejected") {
+        const err = pdfResult.reason;
+        console.error("Failed to load invoice PDF preview:", err);
+        setPdfError(
+          err?.response?.data?.message ||
           "Could not load invoice PDF preview. You can still retry or download."
-      );
-      toast.error("Failed to prepare invoice preview");
+        );
+        toast.error("Failed to prepare invoice PDF preview");
+      }
     } finally {
       setLoadingPreview(false);
       setLoadingPdf(false);
@@ -230,11 +239,10 @@ export default function SendInvoiceMailModal({
                 <button
                   type="button"
                   onClick={() => setMailTab("preview")}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    mailTab === "preview"
-                      ? "bg-white text-indigo-700 shadow-xs"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${mailTab === "preview"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-gray-600 hover:text-gray-900"
+                    }`}
                 >
                   <Eye className="h-3.5 w-3.5" />
                   Preview Mail
@@ -242,11 +250,10 @@ export default function SendInvoiceMailModal({
                 <button
                   type="button"
                   onClick={() => setMailTab("edit")}
-                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
-                    mailTab === "edit"
-                      ? "bg-white text-indigo-700 shadow-xs"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${mailTab === "edit"
+                    ? "bg-white text-indigo-700 shadow-xs"
+                    : "text-gray-600 hover:text-gray-900"
+                    }`}
                 >
                   <Edit3 className="h-3.5 w-3.5" />
                   Edit Mail
