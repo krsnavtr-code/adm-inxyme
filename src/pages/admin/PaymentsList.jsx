@@ -81,8 +81,12 @@ export default function PaymentsList() {
       setTotalCount(data.count || 0);
     } catch (err) {
       console.error("Error fetching payments:", err);
-      setError("Failed to load payments");
-      toast.error("Failed to load payments");
+      const errMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to load payments";
+      setError(errMsg);
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
