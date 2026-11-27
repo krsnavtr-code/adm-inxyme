@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId, useCallback } from "react";
+import React, { useState, useEffect, useId, useCallback, useMemo } from "react";
 import { toast } from "react-hot-toast";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -19,8 +19,10 @@ import {
   Receipt,
   CreditCard,
   BellRing,
+  User,
 } from "lucide-react";
 import paymentApi from "../../api/paymentApi";
+import userApi from "../../api/userApi";
 import AddPaymentModal from "../../components/admin/payments/AddPaymentModal";
 import SendInvoiceMailModal from "../../components/admin/payments/SendInvoiceMailModal";
 import SendPendingAlertModal from "../../components/admin/payments/SendPendingAlertModal";
@@ -48,6 +50,8 @@ export default function PaymentsList() {
   const [error, setError] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [userFilter, setUserFilter] = useState("all");
+  const [users, setUsers] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [methodFilter, setMethodFilter] = useState("all");
   const [invoiceSentFilter, setInvoiceSentFilter] = useState("all");
@@ -62,6 +66,67 @@ export default function PaymentsList() {
   const [alertModalPayment, setAlertModalPayment] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
 
+  // Load user directory for the Student / User filter dropdown
+  useEffect(() => {
+    let cancelled = false;
+    const loadUsersForFilter = async () => {
+      try {
+        const res = await userApi.getUsers();
+        if (cancelled) return;
+        const list = Array.isArray(res) ? res : res?.data || res?.users || [];
+        if (Array.isArray(list)) {
+          setUsers(list);
+        }
+      } catch (err) {
+        console.warn("Could not load users list for payment filter:", err);
+      }
+    };
+    loadUsersForFilter();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const { studentUsers, otherUsers } = useMemo(() => {
+    const sorted = [...users].sort((a, b) =>
+      (a.fullname || a.email || "").localeCompare(b.fullname || b.email || "")
+    );
+    const students = [];
+    const others = [];
+    for (const u of sorted) {
+      if ((u.role || "student").toLowerCase() === "student") {
+        students.push(u);
+      } else {
+        others.push(u);
+      }
+    }
+    return { studentUsers: students, otherUsers: others };
+  }, [users]);
+
+  const selectedFilterUser = useMemo(
+    () =>
+      userFilter !== "all"
+        ? users.find((u) => String(u._id) === String(userFilter)) || null
+        : null,
+    [users, userFilter]
+  );
+
+  const hasActiveFilters =
+    userFilter !== "all" ||
+    statusFilter !== "all" ||
+    methodFilter !== "all" ||
+    invoiceSentFilter !== "all" ||
+    searchTerm.trim() !== "";
+
+  const handleResetAllFilters = () => {
+    setUserFilter("all");
+    setStatusFilter("all");
+    setMethodFilter("all");
+    setInvoiceSentFilter("all");
+    setSearchTerm("");
+    setPage(1);
+  };
+
   const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
@@ -70,6 +135,7 @@ export default function PaymentsList() {
         page,
         limit: 15,
       };
+      if (userFilter !== "all") params.userId = userFilter;
       if (statusFilter !== "all") params.status = statusFilter;
       if (methodFilter !== "all") params.paymentMethod = methodFilter;
       if (invoiceSentFilter !== "all") params.invoiceSent = invoiceSentFilter;
@@ -91,11 +157,11 @@ export default function PaymentsList() {
     } finally {
       setLoading(false);
     }
-  }, [page, statusFilter, methodFilter, invoiceSentFilter, searchTerm]);
+  }, [page, userFilter, statusFilter, methodFilter, invoiceSentFilter, searchTerm]);
 
   useEffect(() => {
     fetchPayments();
-  }, [page, statusFilter, methodFilter, invoiceSentFilter]);
+  }, [page, userFilter, statusFilter, methodFilter, invoiceSentFilter]);
 
   // Open Add Modal automatically if ?userId= is present in URL
   useEffect(() => {
@@ -350,6 +416,39 @@ export default function PaymentsList() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 max-w-[230px]">
+              <User className="h-3.5 w-3.5 text-gray-500 shrink-0" />
+              <select
+                aria-label="Filter by student or user"
+                value={userFilter}
+                onChange={(e) => {
+                  setUserFilter(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full bg-transparent text-xs font-medium text-gray-700 outline-none cursor-pointer truncate"
+              >
+                <option value="all">All Students / Users</option>
+                {studentUsers.length > 0 && (
+                  <optgroup label="Students">
+                    {studentUsers.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.fullname ? `${u.fullname} (${u.email})` : u.email}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherUsers.length > 0 && (
+                  <optgroup label="Other Users">
+                    {otherUsers.map((u) => (
+                      <option key={u._id} value={u._id}>
+                        {u.fullname ? `${u.fullname} (${u.email})` : u.email}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </div>
+
             <div className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5">
               <Filter className="h-3.5 w-3.5 text-gray-500" />
               <select
@@ -406,6 +505,17 @@ export default function PaymentsList() {
               </select>
             </div>
 
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </button>
+            )}
+
             <button
               type="button"
               onClick={fetchPayments}
@@ -418,6 +528,68 @@ export default function PaymentsList() {
           </div>
         </form>
       </search>
+
+      {/* Active Student Filter Summary Banner */}
+      {selectedFilterUser && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/70 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
+              {(selectedFilterUser.fullname || selectedFilterUser.email || "U")
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-bold text-indigo-950 truncate">
+                  {selectedFilterUser.fullname || "Student"}
+                </span>
+                <span className="text-xs text-indigo-700 truncate">
+                  {selectedFilterUser.email}
+                </span>
+                {selectedFilterUser.discountedCoursePrice !== null &&
+                selectedFilterUser.discountedCoursePrice !== undefined &&
+                Number(selectedFilterUser.discountCoursePrice) > 0 ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                    Offered {formatCurrencyINR(selectedFilterUser.discountedCoursePrice)} /{" "}
+                    {formatCurrencyINR(selectedFilterUser.discountCoursePrice)} (
+                    {formatDiscountPercent(selectedFilterUser.discount)} OFF)
+                  </span>
+                ) : (
+                  Number(selectedFilterUser.discount) > 0 && (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                      {formatDiscountPercent(selectedFilterUser.discount)} Discount
+                    </span>
+                  )
+                )}
+              </div>
+              <p className="text-xs text-indigo-700 mt-0.5">
+                Showing {totalCount} payment record{totalCount === 1 ? "" : "s"} for this student
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsAddModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Payment
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setUserFilter("all");
+                setPage(1);
+              }}
+              className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Show All Students
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error State */}
       {error && (
@@ -491,6 +663,15 @@ export default function PaymentsList() {
                     payment.invoiceNumber ||
                     `INV-${String(payment._id || "").slice(-6).toUpperCase()}`;
                   const isHighlighted = recentAddedPayment?._id === payment._id;
+                  const rowUserId =
+                    payment.userId?._id ||
+                    (typeof payment.userId === "string" ? payment.userId : "") ||
+                    users.find(
+                      (u) =>
+                        (u.email || "").toLowerCase() ===
+                        (payment.email || "").toLowerCase()
+                    )?._id ||
+                    "";
 
                   return (
                     <tr
@@ -518,7 +699,23 @@ export default function PaymentsList() {
 
                       {/* Student */}
                       <td className="py-4 px-3 text-sm">
-                        <div className="font-semibold text-gray-900">{payment.name}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-gray-900">{payment.name}</span>
+                          {rowUserId && String(userFilter) !== String(rowUserId) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUserFilter(String(rowUserId));
+                                setPage(1);
+                              }}
+                              className="inline-flex items-center gap-0.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+                              title={`Filter payments for ${payment.name}`}
+                            >
+                              <Filter className="h-2.5 w-2.5" />
+                              Filter
+                            </button>
+                          )}
+                        </div>
                         <div className="text-xs text-gray-500">{payment.email}</div>
                         {payment.phone && payment.phone !== "Not provided" && (
                           <div className="text-xs text-gray-400">{payment.phone}</div>
@@ -731,7 +928,7 @@ export default function PaymentsList() {
         open={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSuccess={handleAddSuccess}
-        initialUserId={initialUserId}
+        initialUserId={initialUserId || (userFilter !== "all" ? userFilter : "")}
       />
 
       {/* Send Payment Invoice Mail Preview Popup */}
