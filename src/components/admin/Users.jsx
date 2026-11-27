@@ -2,9 +2,12 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import userApi from "../../api/userApi";
+import api from "../../api/axios";
 import { FaEdit, FaKey, FaTrash, FaBook, FaSearch, FaTimes, FaFilter, FaRupeeSign, FaPaperPlane } from "react-icons/fa";
 import EnrollUserModal from "./EnrollUserModal";
 import SendLmsInviteModal from "./SendLmsInviteModal";
+import SetDiscountPriceModal from "./SetDiscountPriceModal";
+import { formatCurrencyINR, formatDiscountPercent } from "../../utils/paymentFormatters";
 
 // Modal components
 const UserModal = ({ user, onClose, onSave, isOpen }) => {
@@ -277,9 +280,10 @@ const Users = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [lmsInviteUser, setLmsInviteUser] = useState(null);
+  const [pricingUser, setPricingUser] = useState(null);
+  const [courses, setCourses] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [editingUserId, setEditingUserId] = useState(null);
-  const [editingDiscountId, setEditingDiscountId] = useState(null);
 
   // Filter states: Status, Role, LMS Status, Search
   const [searchTerm, setSearchTerm] = useState("");
@@ -346,10 +350,28 @@ const Users = () => {
       return true;
     });
   }, [users, searchTerm, statusFilter, roleFilter, lmsStatusFilter]);
-  // Fetch users on component mount
+  // Fetch users & catalog courses on component mount
   useEffect(() => {
     fetchUsers();
+    fetchCourses();
   }, []);
+
+  const fetchCourses = async () => {
+    try {
+      const response = await api.get("/courses", {
+        params: {
+          all: "true",
+          fields: "_id,title,price,originalPrice,isFree,isPublished",
+        },
+      });
+      const list = response?.data?.data || response?.data?.courses || response?.data || [];
+      if (Array.isArray(list)) {
+        setCourses(list);
+      }
+    } catch (error) {
+      console.error("Error fetching courses list:", error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -481,26 +503,6 @@ const Users = () => {
   const handleEnrollClick = (user) => {
     setCurrentUser(user);
     setIsEnrollModalOpen(true);
-  };
-
-  const handleDiscountChange = async (userId, discountValue) => {
-    const discount = Math.min(100, Math.max(0, Number(discountValue)));
-    try {
-      await userApi.updateDiscount(userId, discount);
-      toast.success("Discount updated successfully");
-      await fetchUsers();
-      setEditingDiscountId(null);
-    } catch (error) {
-      console.error("Error updating discount:", error);
-      toast.error(error.response?.data?.message || "Failed to update discount");
-    }
-  };
-
-  const handleDiscountKeyDown = (e, userId, discountValue) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleDiscountChange(userId, discountValue);
-    }
   };
 
   const handleEditClick = (user) => {
@@ -694,7 +696,7 @@ const Users = () => {
                   LMS Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Discount (%)
+                  Offered Price / Discount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
@@ -834,46 +836,59 @@ const Users = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {editingDiscountId === user._id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={user.discount || ""}
-                            onChange={(e) =>
-                              setUsers(
-                                users.map((u) =>
-                                  u._id === user._id
-                                    ? { ...u, discount: e.target.value }
-                                    : u,
-                                ),
-                              )
-                            }
-                            onKeyDown={(e) =>
-                              handleDiscountKeyDown(e, user._id, e.target.value)
-                            }
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
-                            autoFocus
-                          />
-                          <button
-                            onClick={() =>
-                              handleDiscountChange(user._id, user.discount || 0)
-                            }
-                            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={() => setEditingDiscountId(user._id)}
-                          className="flex items-center space-x-1 cursor-pointer hover:text-indigo-600"
-                        >
-                          <span className="text-sm">{user.discount || 0}%</span>
-                          <FaEdit className="text-xs" />
-                        </div>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => setPricingUser(user)}
+                        className="group flex flex-col items-start text-left rounded-lg px-2 py-1 -mx-2 -my-1 hover:bg-indigo-50/80 transition-colors cursor-pointer"
+                        title="Set or edit offered course price"
+                      >
+                        {user.discountedCoursePrice !== null &&
+                        user.discountedCoursePrice !== undefined &&
+                        Number(user.discountCoursePrice) > 0 ? (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-bold text-gray-900">
+                                {formatCurrencyINR(user.discountedCoursePrice)}
+                              </span>
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                                {formatDiscountPercent(user.discount)} OFF
+                              </span>
+                              <FaEdit className="text-xs text-gray-400 group-hover:text-indigo-600" />
+                            </div>
+                            <div className="text-[11px] text-gray-500 flex items-center gap-1 mt-0.5 max-w-[180px]">
+                              <span className="line-through text-gray-400">
+                                {formatCurrencyINR(user.discountCoursePrice)}
+                              </span>
+                              {user.discountCourseTitle && (
+                                <span className="truncate" title={user.discountCourseTitle}>
+                                  • {user.discountCourseTitle}
+                                </span>
+                              )}
+                              {Array.isArray(user.courseDiscounts) &&
+                                user.courseDiscounts.length > 1 && (
+                                  <span className="shrink-0 font-semibold text-indigo-600">
+                                    +{user.courseDiscounts.length - 1}
+                                  </span>
+                                )}
+                            </div>
+                          </>
+                        ) : Number(user.discount) > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-semibold text-emerald-700">
+                              {formatDiscountPercent(user.discount)} OFF
+                            </span>
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-200">
+                              Legacy %
+                            </span>
+                            <FaEdit className="text-xs text-gray-400 group-hover:text-indigo-600" />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-gray-500 group-hover:text-indigo-600">
+                            <span className="text-xs font-medium">Set Offered Price</span>
+                            <FaEdit className="text-xs" />
+                          </div>
+                        )}
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
@@ -986,6 +1001,27 @@ const Users = () => {
               prev.map((u) =>
                 u._id === updatedUser._id ? { ...u, ...updatedUser } : u
               )
+            );
+          } else {
+            fetchUsers();
+          }
+        }}
+      />
+
+      <SetDiscountPriceModal
+        open={Boolean(pricingUser)}
+        user={pricingUser}
+        courses={courses}
+        onClose={() => setPricingUser(null)}
+        onSaved={(updatedUser) => {
+          if (updatedUser?._id) {
+            setUsers((prev) =>
+              prev.map((u) =>
+                u._id === updatedUser._id ? { ...u, ...updatedUser } : u
+              )
+            );
+            setPricingUser((prev) =>
+              prev && prev._id === updatedUser._id ? { ...prev, ...updatedUser } : prev
             );
           } else {
             fetchUsers();

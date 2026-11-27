@@ -2,6 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import api from "../../api/axios";
+import userApi from "../../api/userApi";
+import paymentApi from "../../api/paymentApi";
+import {
+  filterCompletedPaymentsForCourse,
+  formatCurrencyINR,
+  formatDiscountPercent,
+  resolveCoursePrice,
+  resolveCoursePricingForStudent,
+} from "../../utils/paymentFormatters";
 import {
   Link2,
   Plus,
@@ -50,8 +59,12 @@ export default function PaymentLinksPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
 
-  // Available courses for dropdown
+  // Available courses & students for optional auto-calculation
   const [courses, setCourses] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [linkPricingSummary, setLinkPricingSummary] = useState(null);
 
   // Create form fields
   const [formData, setFormData] = useState({
@@ -91,23 +104,133 @@ export default function PaymentLinksPage() {
     }
   };
 
-  // Fetch courses list for dropdown
+  // Fetch courses & students list for payment-link pricing auto-calculation
   useEffect(() => {
-    const fetchCourses = async () => {
+    const fetchDirectory = async () => {
       try {
-        const response = await api.get("/courses", {
-          params: { limit: 100, fields: "_id,title" },
-        });
-        const list = response?.data?.data || response?.data?.courses || response?.data || [];
-        if (Array.isArray(list)) {
-          setCourses(list);
+        const [courseRes, usersRes] = await Promise.allSettled([
+          api.get("/courses", {
+            params: { all: "true", limit: 200, fields: "_id,title,price,originalPrice,isFree" },
+          }),
+          userApi.getUsers(),
+        ]);
+
+        if (courseRes.status === "fulfilled") {
+          const list =
+            courseRes.value?.data?.data ||
+            courseRes.value?.data?.courses ||
+            courseRes.value?.data ||
+            [];
+          if (Array.isArray(list)) {
+            setCourses(list);
+          }
+        }
+        if (usersRes.status === "fulfilled") {
+          const uList = Array.isArray(usersRes.value)
+            ? usersRes.value
+            : usersRes.value?.data || usersRes.value?.users || [];
+          if (Array.isArray(uList)) {
+            setUsers(uList);
+          }
         }
       } catch (err) {
-        console.error("Error loading courses:", err);
+        console.error("Error loading directory:", err);
       }
     };
-    fetchCourses();
+    fetchDirectory();
   }, []);
+
+  const applyLinkPricingCalculation = async (studentIdVal, courseIdVal) => {
+    const studentObj = users.find((u) => String(u._id) === String(studentIdVal)) || null;
+    const courseObj = courses.find((c) => String(c._id) === String(courseIdVal)) || null;
+
+    if (!courseObj) {
+      setLinkPricingSummary(null);
+      return;
+    }
+
+    let priorPayments = [];
+    if (studentObj?._id) {
+      try {
+        const histRes = await paymentApi.getStudentPaymentHistory({
+          userId: studentObj._id,
+          email: studentObj.email || "",
+        });
+        if (histRes?.success) {
+          priorPayments = histRes.payments || [];
+        }
+      } catch {
+        priorPayments = [];
+      }
+    }
+
+    const resolved = resolveCoursePricingForStudent({
+      user: studentObj,
+      courseObj,
+      courseId: courseObj._id,
+      courseTitle: courseObj.title,
+    });
+
+    const previouslyPaid = studentObj
+      ? filterCompletedPaymentsForCourse(priorPayments, courseObj._id, courseObj.title).reduce(
+          (sum, p) => sum + (Number(p.paymentAmount) || 0),
+          0
+        )
+      : 0;
+
+    const payableRemaining = Math.max(
+      0,
+      Number(((resolved.offeredPrice || 0) - previouslyPaid).toFixed(2))
+    );
+
+    setLinkPricingSummary({
+      ...resolved,
+      previouslyPaid,
+      payableRemaining,
+    });
+
+    setFormData((prev) => ({
+      ...prev,
+      course: courseObj.title,
+      title: prev.title.trim() ? prev.title : `Course Fee - ${courseObj.title}`,
+      amount:
+        payableRemaining > 0
+          ? String(Math.round(payableRemaining))
+          : resolved.offeredPrice > 0
+            ? String(Math.round(resolved.offeredPrice))
+            : prev.amount,
+    }));
+  };
+
+  const handleStudentPick = async (studentIdVal) => {
+    setSelectedStudentId(studentIdVal);
+    const studentObj = users.find((u) => String(u._id) === String(studentIdVal)) || null;
+    if (!studentObj) {
+      setLinkPricingSummary(null);
+      return;
+    }
+
+    const enrolled = Array.isArray(studentObj.enrolledCourses) ? studentObj.enrolledCourses : [];
+    const autoCourseId =
+      selectedCourseId ||
+      (studentObj.discountCourseId?._id || studentObj.discountCourseId || "") ||
+      (enrolled.length === 1 ? enrolled[0]._id || enrolled[0] : "");
+
+    if (autoCourseId) {
+      setSelectedCourseId(String(autoCourseId));
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      studentName: studentObj.fullname || prev.studentName,
+      studentEmail: studentObj.email || prev.studentEmail,
+      studentPhone: studentObj.phone || prev.studentPhone,
+    }));
+
+    if (autoCourseId) {
+      await applyLinkPricingCalculation(studentIdVal, autoCourseId);
+    }
+  };
 
   useEffect(() => {
     fetchPaymentLinks();
@@ -186,6 +309,13 @@ export default function PaymentLinksPage() {
         title: formData.title.trim(),
         amount: num,
         course: formData.course.trim(),
+        courseId: selectedCourseId || null,
+        userId: selectedStudentId || null,
+        totalCourseFee:
+          linkPricingSummary && linkPricingSummary.totalCourseFee > 0
+            ? linkPricingSummary.totalCourseFee
+            : null,
+        discountAmount: linkPricingSummary?.discountAmount || 0,
         studentName: formData.studentName.trim(),
         studentEmail: formData.studentEmail.trim(),
         studentPhone: formData.studentPhone.trim(),
@@ -204,6 +334,9 @@ export default function PaymentLinksPage() {
         setIsCreateOpen(false);
         setIsSuccessOpen(true);
         // Reset form
+        setSelectedStudentId("");
+        setSelectedCourseId("");
+        setLinkPricingSummary(null);
         setFormData({
           title: "",
           amount: "",
@@ -617,6 +750,98 @@ export default function PaymentLinksPage() {
 
             {/* Modal Form */}
             <form onSubmit={handleCreateSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Optional Student & Offered-Price Auto-Calculator */}
+              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-3.5 space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-indigo-950 uppercase tracking-wider">
+                    Auto-Fill from Student &amp; Course Price (Optional)
+                  </span>
+                  {(selectedStudentId || selectedCourseId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedStudentId("");
+                        setSelectedCourseId("");
+                        setLinkPricingSummary(null);
+                      }}
+                      className="text-[11px] font-semibold text-indigo-700 hover:underline"
+                    >
+                      Clear selection
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                      Student
+                    </label>
+                    <select
+                      value={selectedStudentId}
+                      onChange={(e) => handleStudentPick(e.target.value)}
+                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white text-gray-800 outline-none focus:border-indigo-500"
+                    >
+                      <option value="">-- Select student (optional) --</option>
+                      {users.map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.fullname || u.email} ({u.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                      Course (With Price)
+                    </label>
+                    <select
+                      value={selectedCourseId}
+                      onChange={(e) => {
+                        const cid = e.target.value;
+                        setSelectedCourseId(cid);
+                        applyLinkPricingCalculation(selectedStudentId, cid);
+                      }}
+                      className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white text-gray-800 outline-none focus:border-indigo-500"
+                    >
+                      <option value="">-- Select course (optional) --</option>
+                      {courses.map((c) => {
+                        const cPrice = resolveCoursePrice(c);
+                        return (
+                          <option key={c._id} value={c._id}>
+                            {c.title} {cPrice > 0 ? `(₹${cPrice.toLocaleString("en-IN")})` : "(₹0)"}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+                {linkPricingSummary && linkPricingSummary.totalCourseFee > 0 && (
+                  <div className="rounded-xl border border-indigo-200 bg-white px-3 py-2 text-xs space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-gray-700">
+                      <span>
+                        Course Fee: <strong>{formatCurrencyINR(linkPricingSummary.totalCourseFee)}</strong>
+                        {linkPricingSummary.discountAmount > 0 && (
+                          <>
+                            {" "}• Discount:{" "}
+                            <strong className="text-emerald-700">
+                              -{formatCurrencyINR(linkPricingSummary.discountAmount)} (
+                              {formatDiscountPercent(linkPricingSummary.discountPercent)})
+                            </strong>
+                          </>
+                        )}
+                      </span>
+                      <span className="font-bold text-indigo-800">
+                        Offered: {formatCurrencyINR(linkPricingSummary.offeredPrice)}
+                      </span>
+                    </div>
+                    {linkPricingSummary.previouslyPaid > 0 && (
+                      <div className="flex items-center justify-between text-[11px] text-emerald-700 font-medium">
+                        <span>Already Paid Earlier: {formatCurrencyINR(linkPricingSummary.previouslyPaid)}</span>
+                        <span>Balance Remaining: {formatCurrencyINR(linkPricingSummary.payableRemaining)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Payment Purpose / Title */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
@@ -688,14 +913,21 @@ export default function PaymentLinksPage() {
                   />
                   {courses.length > 0 && (
                     <select
+                      value={selectedCourseId}
                       onChange={(e) => {
-                        if (e.target.value) setFormData({ ...formData, course: e.target.value });
+                        const cid = e.target.value;
+                        setSelectedCourseId(cid);
+                        if (cid) {
+                          applyLinkPricingCalculation(selectedStudentId, cid);
+                        } else {
+                          setLinkPricingSummary(null);
+                        }
                       }}
                       className="px-3 py-2 text-xs border border-gray-300 rounded-xl bg-gray-50 text-gray-700 outline-none"
                     >
                       <option value="">Select from list</option>
                       {courses.map((c) => (
-                        <option key={c._id} value={c.title}>
+                        <option key={c._id} value={c._id}>
                           {c.title}
                         </option>
                       ))}

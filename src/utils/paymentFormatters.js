@@ -51,6 +51,149 @@ export const resolveCoursePrice = (courseObj) => {
   return !Number.isNaN(price) && price >= 0 ? price : 0;
 };
 
+export const formatDiscountPercent = (discountPercent) => {
+  const pct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+  return `${Number(pct.toFixed(2))}%`;
+};
+
+/**
+ * Compute discount amount (in INR) and percentage (0-100) from the course price captured at save time
+ * and the final price at which the course is offered to the student.
+ */
+export const computeDiscountFromOfferedPrice = (originalCoursePrice, offeredPrice) => {
+  const basePrice = Math.max(0, Number(originalCoursePrice) || 0);
+  const agreedPrice = Math.max(0, Number(offeredPrice) || 0);
+  if (basePrice <= 0) {
+    return {
+      originalCoursePrice: 0,
+      offeredPrice: Number(agreedPrice.toFixed(2)),
+      discountAmount: 0,
+      discountPercent: 0,
+    };
+  }
+  const clampedOffered = Math.min(basePrice, agreedPrice);
+  const discountAmount = Number((basePrice - clampedOffered).toFixed(2));
+  const rawPercent = ((basePrice - clampedOffered) / basePrice) * 100;
+  const discountPercent = Math.min(100, Math.max(0, Number(rawPercent.toFixed(6))));
+  return {
+    originalCoursePrice: Number(basePrice.toFixed(2)),
+    offeredPrice: Number(clampedOffered.toFixed(2)),
+    discountAmount,
+    discountPercent,
+  };
+};
+
+/**
+ * Find matching saved pricing snapshot on a user object for a courseId or courseTitle.
+ */
+export const findMatchingCoursePricingSnapshot = (userObj, courseId = "", courseTitle = "") => {
+  if (!userObj) return null;
+
+  const targetId = courseId?._id ? String(courseId._id) : courseId ? String(courseId) : "";
+  const targetTitle = String(courseTitle || "").trim().toLowerCase();
+
+  const entries = Array.isArray(userObj.courseDiscounts) ? userObj.courseDiscounts : [];
+  if (entries.length > 0) {
+    if (targetId) {
+      const byId = entries.find((item) => item?.courseId && String(item.courseId) === targetId);
+      if (byId && Number(byId.originalCoursePrice) > 0) return byId;
+    }
+    if (targetTitle) {
+      const byTitle = entries.find(
+        (item) =>
+          item?.courseTitle &&
+          String(item.courseTitle).trim().toLowerCase() === targetTitle
+      );
+      if (byTitle && Number(byTitle.originalCoursePrice) > 0) return byTitle;
+    }
+  }
+
+  const hasTopLevelSnapshot =
+    Number(userObj.discountCoursePrice) > 0 &&
+    userObj.discountedCoursePrice !== undefined &&
+    userObj.discountedCoursePrice !== null;
+
+  if (!hasTopLevelSnapshot) return null;
+
+  const snapId = userObj.discountCourseId?._id
+    ? String(userObj.discountCourseId._id)
+    : userObj.discountCourseId
+      ? String(userObj.discountCourseId)
+      : "";
+  const snapTitle = String(userObj.discountCourseTitle || "").trim().toLowerCase();
+
+  const matchesById = Boolean(targetId && snapId && targetId === snapId);
+  const matchesByTitle = Boolean(targetTitle && snapTitle && targetTitle === snapTitle);
+  const matchesGenericCustom = !targetId && !snapId && (!snapTitle || snapTitle === targetTitle);
+
+  if (matchesById || matchesByTitle || matchesGenericCustom) {
+    const originalCoursePrice = Number(userObj.discountCoursePrice);
+    const offeredPrice = Number(userObj.discountedCoursePrice);
+    return {
+      courseId: userObj.discountCourseId || null,
+      courseTitle: userObj.discountCourseTitle || "",
+      originalCoursePrice,
+      offeredPrice,
+      discountAmount: Number(
+        userObj.discountAmount ?? Math.max(0, originalCoursePrice - offeredPrice)
+      ),
+      discountPercent: Number(userObj.discount || 0),
+    };
+  }
+
+  return null;
+};
+
+/**
+ * Resolve totalCourseFee, discountAmount, offeredPrice, and metadata for a student + course.
+ */
+export const resolveCoursePricingForStudent = ({
+  user = null,
+  courseObj = null,
+  courseId = "",
+  courseTitle = "",
+  preferLivePrice = false,
+}) => {
+  const effectiveCourseId = courseId || courseObj?._id || "";
+  const effectiveTitle = courseTitle || courseObj?.title || "";
+  const liveCatalogPrice = courseObj ? resolveCoursePrice(courseObj) : 0;
+
+  const snapshot = findMatchingCoursePricingSnapshot(user, effectiveCourseId, effectiveTitle);
+
+  if (snapshot && !preferLivePrice) {
+    const snapBase = Math.max(0, Number(snapshot.originalCoursePrice) || 0);
+    const snapOffered = Math.min(snapBase, Math.max(0, Number(snapshot.offeredPrice) || 0));
+    const snapDiscountAmt = Number((snapBase - snapOffered).toFixed(2));
+    return {
+      totalCourseFee: snapBase,
+      discountAmount: snapDiscountAmt,
+      offeredPrice: snapOffered,
+      discountPercent: Number(snapshot.discountPercent ?? user?.discount ?? 0),
+      pricingSource: "snapshot",
+      snapshot,
+      liveCatalogPrice,
+      priceChangedSinceDiscount:
+        liveCatalogPrice > 0 && Math.abs(liveCatalogPrice - snapBase) >= 0.01,
+    };
+  }
+
+  const baseFee = liveCatalogPrice > 0 ? liveCatalogPrice : snapshot?.originalCoursePrice || 0;
+  const pct = Math.min(100, Math.max(0, Number(user?.discount || 0)));
+  const discountAmount =
+    baseFee > 0 && pct > 0 ? Number(((baseFee * pct) / 100).toFixed(2)) : 0;
+  return {
+    totalCourseFee: baseFee,
+    discountAmount,
+    offeredPrice: Number(Math.max(0, baseFee - discountAmount).toFixed(2)),
+    discountPercent: pct,
+    pricingSource: pct > 0 ? "percent" : "none",
+    snapshot,
+    liveCatalogPrice,
+    priceChangedSinceDiscount:
+      Boolean(snapshot && liveCatalogPrice > 0 && Math.abs(liveCatalogPrice - Number(snapshot.originalCoursePrice)) >= 0.01),
+  };
+};
+
 /**
  * Compute discount amount (in INR) and net payable fee from total course fee and user discount percentage (0-100).
  */

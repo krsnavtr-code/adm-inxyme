@@ -24,7 +24,9 @@ import {
   computeUserDiscountFromFee,
   filterCompletedPaymentsForCourse,
   formatCurrencyINR,
+  formatDiscountPercent,
   resolveCoursePrice,
+  resolveCoursePricingForStudent,
 } from "../../../utils/paymentFormatters";
 
 const getInitialFormState = () => ({
@@ -72,6 +74,8 @@ export default function AddPaymentModal({
   const [fetchingPricing, setFetchingPricing] = useState(false);
   const [studentPayments, setStudentPayments] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [pricingMeta, setPricingMeta] = useState(null);
+  const [useLiveCatalogFee, setUseLiveCatalogFee] = useState(false);
 
   const activeUserIdRef = useRef("");
   const activeCourseIdRef = useRef("");
@@ -196,6 +200,8 @@ export default function AddPaymentModal({
     latestSelectedUserRef.current = null;
     setEnrolledCourseIds(new Set());
     setShowUserPicker(true);
+    setPricingMeta(null);
+    setUseLiveCatalogFee(false);
     const initial = getInitialFormState();
     setFormData(initial);
     latestFormRef.current = initial;
@@ -211,7 +217,7 @@ export default function AddPaymentModal({
   const applyCourseSelection = (
     courseObj,
     userObj = latestSelectedUserRef.current,
-    { preserveManual = false } = {}
+    { preserveManual = false, preferLivePrice = useLiveCatalogFee } = {}
   ) => {
     if (!courseObj) return;
     activeCourseIdRef.current = String(courseObj._id || "");
@@ -220,11 +226,17 @@ export default function AddPaymentModal({
       paymentManualRef.current = false;
     }
 
-    const baseFee = resolveCoursePrice(courseObj);
-    const { discountAmount: computedDiscount } = computeUserDiscountFromFee(
-      baseFee,
-      userObj?.discount
-    );
+    const resolvedPricing = resolveCoursePricingForStudent({
+      user: userObj,
+      courseObj,
+      courseId: courseObj._id,
+      courseTitle: courseObj.title,
+      preferLivePrice,
+    });
+    setPricingMeta(resolvedPricing);
+
+    const baseFee = resolvedPricing.totalCourseFee;
+    const computedDiscount = resolvedPricing.discountAmount;
     const priorPaidForCourse = filterCompletedPaymentsForCourse(
       latestStudentPaymentsRef.current,
       courseObj._id,
@@ -380,27 +392,45 @@ export default function AddPaymentModal({
       const currentForm = latestFormRef.current;
 
       if (currentForm.courseId || (currentForm.totalCourseFee !== "" && !Number.isNaN(Number(currentForm.totalCourseFee)))) {
+        const matchedCourseObj = currentForm.courseId
+          ? combinedCourses.find((c) => String(c._id) === String(currentForm.courseId)) || null
+          : null;
         const priorPaid = filterCompletedPaymentsForCourse(
           fetchedHistory,
           currentForm.courseId,
           currentForm.course
         ).reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0);
 
+        const resolvedForExisting = resolveCoursePricingForStudent({
+          user: effectiveUser,
+          courseObj: matchedCourseObj,
+          courseId: currentForm.courseId,
+          courseTitle: currentForm.course,
+          preferLivePrice: useLiveCatalogFee,
+        });
+        setPricingMeta(resolvedForExisting);
+
         setFormData((prev) => {
           const nextPhone = prev.phone || effectiveUser.phone || "";
           const nextAddress = prev.address || effectiveUser.address || "";
-          const feeNum = Number(prev.totalCourseFee);
-          if (Number.isNaN(feeNum) || prev.totalCourseFee === "") {
+          const effectiveFee =
+            resolvedForExisting.pricingSource === "snapshot" && resolvedForExisting.totalCourseFee > 0
+              ? resolvedForExisting.totalCourseFee
+              : Number(prev.totalCourseFee);
+          if (Number.isNaN(effectiveFee) || prev.totalCourseFee === "") {
             return { ...prev, phone: nextPhone, address: nextAddress };
           }
           const nextDiscount = discountManualRef.current
             ? Math.max(0, Number(prev.discountAmount) || 0)
-            : computeUserDiscountFromFee(feeNum, effectiveUser.discount).discountAmount;
-          const nextNetPayable = computeRemainingBalance(feeNum, nextDiscount, priorPaid, 0);
+            : resolvedForExisting.pricingSource === "snapshot"
+              ? resolvedForExisting.discountAmount
+              : computeUserDiscountFromFee(effectiveFee, effectiveUser.discount).discountAmount;
+          const nextNetPayable = computeRemainingBalance(effectiveFee, nextDiscount, priorPaid, 0);
           return {
             ...prev,
             phone: nextPhone,
             address: nextAddress,
+            totalCourseFee: String(effectiveFee),
             discountAmount: discountManualRef.current ? prev.discountAmount : String(nextDiscount),
             paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(nextNetPayable),
           };
@@ -422,10 +452,12 @@ export default function AddPaymentModal({
 
   const handleCourseSelectChange = async (e) => {
     const val = e.target.value;
+    setUseLiveCatalogFee(false);
     if (!val) {
       activeCourseIdRef.current = "";
       discountManualRef.current = false;
       paymentManualRef.current = false;
+      setPricingMeta(null);
       setFormData((prev) => ({
         ...prev,
         courseId: "",
@@ -438,6 +470,7 @@ export default function AddPaymentModal({
     }
     if (val === "__custom__") {
       activeCourseIdRef.current = "";
+      setPricingMeta(null);
       setFormData((prev) => ({ ...prev, courseId: "", course: "" }));
       return;
     }
@@ -445,7 +478,7 @@ export default function AddPaymentModal({
     activeCourseIdRef.current = String(val);
     const matched = courses.find((c) => String(c._id) === String(val));
     if (matched) {
-      applyCourseSelection(matched, latestSelectedUserRef.current);
+      applyCourseSelection(matched, latestSelectedUserRef.current, { preferLivePrice: false });
     }
 
     // Fetch latest Course price & fresh User discount in parallel so edits are always reflected
@@ -608,12 +641,34 @@ export default function AddPaymentModal({
   );
 
   const expectedUserDiscount = useMemo(() => {
+    if (
+      pricingMeta?.pricingSource === "snapshot" &&
+      pricingMeta.snapshot &&
+      Math.abs(
+        Number(formData.totalCourseFee || 0) - Number(pricingMeta.snapshot.originalCoursePrice || 0)
+      ) < 0.01
+    ) {
+      return pricingMeta.discountAmount;
+    }
     const { discountAmount } = computeUserDiscountFromFee(
       formData.totalCourseFee,
       selectedUser?.discount
     );
     return discountAmount;
-  }, [formData.totalCourseFee, selectedUser?.discount]);
+  }, [formData.totalCourseFee, selectedUser?.discount, pricingMeta]);
+
+  const handleToggleFeeSource = (preferLive) => {
+    setUseLiveCatalogFee(preferLive);
+    discountManualRef.current = false;
+    paymentManualRef.current = false;
+    const matched = courses.find((c) => String(c._id) === String(formData.courseId));
+    if (matched) {
+      applyCourseSelection(matched, latestSelectedUserRef.current, {
+        preserveManual: false,
+        preferLivePrice: preferLive,
+      });
+    }
+  };
 
   const handleFieldChange = (name, value) => {
     const prevPaidNow = filterCompletedPaymentsForCourse(
@@ -678,10 +733,14 @@ export default function AddPaymentModal({
     discountManualRef.current = false;
     const prevPaidNow = previouslyPaidAmount;
     setFormData((prev) => {
-      const { discountAmount: dAmt } = computeUserDiscountFromFee(
-        prev.totalCourseFee,
-        latestSelectedUserRef.current?.discount
-      );
+      const feeNum = Number(prev.totalCourseFee || 0);
+      const useSnapshot =
+        pricingMeta?.pricingSource === "snapshot" &&
+        pricingMeta.snapshot &&
+        Math.abs(feeNum - Number(pricingMeta.snapshot.originalCoursePrice || 0)) < 0.01;
+      const dAmt = useSnapshot
+        ? pricingMeta.discountAmount
+        : computeUserDiscountFromFee(feeNum, latestSelectedUserRef.current?.discount).discountAmount;
       const nextNet = computeRemainingBalance(prev.totalCourseFee, dAmt, prevPaidNow, 0);
       return {
         ...prev,
@@ -837,10 +896,20 @@ export default function AddPaymentModal({
                     <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 capitalize">
                       {selectedUser.role || "student"}
                     </span>
-                    {selectedUser.discount > 0 && (
+                    {selectedUser.discountedCoursePrice !== null &&
+                    selectedUser.discountedCoursePrice !== undefined &&
+                    Number(selectedUser.discountCoursePrice) > 0 ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                        {selectedUser.discount}% User Discount
+                        Offered {formatCurrencyINR(selectedUser.discountedCoursePrice)} /{" "}
+                        {formatCurrencyINR(selectedUser.discountCoursePrice)} (
+                        {formatDiscountPercent(selectedUser.discount)} OFF)
                       </span>
+                    ) : (
+                      Number(selectedUser.discount) > 0 && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                          {formatDiscountPercent(selectedUser.discount)} User Discount
+                        </span>
+                      )
                     )}
                   </div>
                   <p className="text-xs text-gray-600 mt-0.5">{selectedUser.email}</p>
@@ -940,10 +1009,19 @@ export default function AddPaymentModal({
                                 {courseCount} course{courseCount > 1 ? "s" : ""}
                               </span>
                             )}
-                            {Number(u.discount) > 0 && (
+                            {u.discountedCoursePrice !== null &&
+                            u.discountedCoursePrice !== undefined &&
+                            Number(u.discountCoursePrice) > 0 ? (
                               <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                {u.discount}% discount
+                                Offered {formatCurrencyINR(u.discountedCoursePrice)} (
+                                {formatDiscountPercent(u.discount)})
                               </span>
+                            ) : (
+                              Number(u.discount) > 0 && (
+                                <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                  {formatDiscountPercent(u.discount)} discount
+                                </span>
+                              )
                             )}
                           </div>
                           <div className="text-xs text-gray-500 truncate mt-0.5">
@@ -1187,9 +1265,36 @@ export default function AddPaymentModal({
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
               />
               {formData.courseId && formData.totalCourseFee !== "" && (
-                <p className="mt-1 text-[11px] text-indigo-700 font-medium">
-                  Course price fetched
-                </p>
+                <div className="mt-1 space-y-1">
+                  {pricingMeta?.pricingSource === "snapshot" ? (
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Locked offer price: {formatCurrencyINR(pricingMeta.offeredPrice)} (at{" "}
+                      {formatCurrencyINR(pricingMeta.totalCourseFee)} course fee)
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-indigo-700 font-medium">
+                      Catalog course price fetched
+                    </p>
+                  )}
+                  {pricingMeta?.priceChangedSinceDiscount && (
+                    <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                      <span>
+                        Catalog price now {formatCurrencyINR(pricingMeta.liveCatalogPrice)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleFeeSource(!useLiveCatalogFee)}
+                        className="font-semibold underline text-amber-900 hover:text-indigo-700"
+                      >
+                        {useLiveCatalogFee
+                          ? `Use locked (${formatCurrencyINR(
+                              pricingMeta.snapshot?.originalCoursePrice
+                            )})`
+                          : "Use live price"}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1204,12 +1309,16 @@ export default function AddPaymentModal({
                 {selectedUser && (
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                      Number(selectedUser.discount) > 0
+                      pricingMeta?.pricingSource === "snapshot" || Number(selectedUser.discount) > 0
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-gray-100 text-gray-500"
                     }`}
                   >
-                    {Number(selectedUser.discount || 0)}% User
+                    {pricingMeta?.pricingSource === "snapshot"
+                      ? `${formatDiscountPercent(pricingMeta.discountPercent)} (Offered ${formatCurrencyINR(
+                          pricingMeta.offeredPrice
+                        )})`
+                      : `${formatDiscountPercent(selectedUser.discount || 0)} User`}
                   </span>
                 )}
               </div>
@@ -1226,7 +1335,7 @@ export default function AddPaymentModal({
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none"
               />
               {selectedUser &&
-                Number(selectedUser.discount) > 0 &&
+                expectedUserDiscount > 0 &&
                 Number(formData.totalCourseFee) > 0 &&
                 Number(formData.discountAmount || 0) !== expectedUserDiscount && (
                   <button
@@ -1234,8 +1343,11 @@ export default function AddPaymentModal({
                     onClick={handleApplyUserDiscount}
                     className="mt-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 underline"
                   >
-                    Apply {selectedUser.discount}% user discount (₹
-                    {expectedUserDiscount.toLocaleString("en-IN")})
+                    Apply{" "}
+                    {pricingMeta?.pricingSource === "snapshot"
+                      ? `${formatCurrencyINR(pricingMeta.offeredPrice)} offered price`
+                      : `${formatDiscountPercent(selectedUser.discount)} user discount`}{" "}
+                    (-{formatCurrencyINR(expectedUserDiscount)})
                   </button>
                 )}
             </div>

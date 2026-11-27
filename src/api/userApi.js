@@ -214,10 +214,14 @@ const userApi = {
     }
   },
 
-  // Update user discount percentage
-  updateDiscount: async (userId, discount) => {
+  // Update user offered price & calculated discount percentage
+  updateDiscount: async (userId, payloadOrDiscount) => {
     try {
-      const response = await api.put(`/users/${userId}/discount`, { discount });
+      const body =
+        typeof payloadOrDiscount === "object" && payloadOrDiscount !== null
+          ? payloadOrDiscount
+          : { discount: payloadOrDiscount };
+      const response = await api.put(`/users/${userId}/discount`, body);
       return response.data;
     } catch (error) {
       console.error("Error updating user discount:", error);

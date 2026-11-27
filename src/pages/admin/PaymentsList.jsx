@@ -26,6 +26,7 @@ import SendInvoiceMailModal from "../../components/admin/payments/SendInvoiceMai
 import SendPendingAlertModal from "../../components/admin/payments/SendPendingAlertModal";
 import {
   formatCurrencyINR,
+  formatDiscountPercent,
   getPaymentMethodLabel,
 } from "../../utils/paymentFormatters";
 
@@ -525,13 +526,37 @@ export default function PaymentsList() {
                       </td>
 
                       {/* Course */}
-                      <td className="py-4 px-3 text-sm max-w-[240px]">
+                      <td className="py-4 px-3 text-sm max-w-[260px]">
                         <div className="font-medium text-gray-900 truncate" title={payment.course}>
                           {payment.course}
                         </div>
                         <div className="text-xs text-gray-500 mt-0.5">
                           {payment.installmentLabel || "Course Fee"}
                         </div>
+                        {Number(payment.totalCourseFee) > 0 && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700">
+                              Fee: {formatCurrencyINR(payment.totalCourseFee)}
+                            </span>
+                            {Number(payment.discountAmount) > 0 && (
+                              <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-semibold text-emerald-700 border border-emerald-200">
+                                Offered:{" "}
+                                {formatCurrencyINR(
+                                  Math.max(
+                                    0,
+                                    Number(payment.totalCourseFee) - Number(payment.discountAmount)
+                                  )
+                                )}{" "}
+                                (
+                                {formatDiscountPercent(
+                                  (Number(payment.discountAmount) / Number(payment.totalCourseFee)) *
+                                    100
+                                )}{" "}
+                                off)
+                              </span>
+                            )}
+                          </div>
+                        )}
                         {Number(payment.balanceDue) > 0 && (
                           <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 border border-amber-200">
                             Due: {formatCurrencyINR(payment.balanceDue)}
