@@ -24,6 +24,11 @@ const paymentApi = {
     return response.data;
   },
 
+  deleteAdminPayment: async (id) => {
+    const response = await api.delete(`/admin/payments/${id}`);
+    return response.data;
+  },
+
   getPaymentById: async (id) => {
     const response = await api.get(`/admin/payments/${id}`);
     return response.data;

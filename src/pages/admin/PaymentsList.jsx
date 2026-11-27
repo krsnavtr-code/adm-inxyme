@@ -21,10 +21,13 @@ import {
   BellRing,
   User,
   Pencil,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import paymentApi from "../../api/paymentApi";
 import userApi from "../../api/userApi";
 import AddPaymentModal from "../../components/admin/payments/AddPaymentModal";
+import NativeModalDialog from "../../components/admin/payments/NativeModalDialog";
 import SendInvoiceMailModal from "../../components/admin/payments/SendInvoiceMailModal";
 import SendPendingAlertModal from "../../components/admin/payments/SendPendingAlertModal";
 import {
@@ -36,6 +39,7 @@ import {
 export default function PaymentsList() {
   const tableHeadingId = useId();
   const searchInputId = useId();
+  const deleteDialogTitleId = useId();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialUserId = searchParams.get("userId") || "";
 
@@ -67,6 +71,8 @@ export default function PaymentsList() {
   const [invoiceModalPayment, setInvoiceModalPayment] = useState(null);
   const [alertModalPayment, setAlertModalPayment] = useState(null);
   const [downloadingId, setDownloadingId] = useState(null);
+  const [deleteTargetPayment, setDeleteTargetPayment] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load user directory for the Student / User filter dropdown
   useEffect(() => {
@@ -206,6 +212,38 @@ export default function PaymentsList() {
     if (initialUserId) {
       searchParams.delete("userId");
       setSearchParams(searchParams, { replace: true });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTargetPayment?._id || isDeleting) return;
+    try {
+      setIsDeleting(true);
+      const res = await paymentApi.deleteAdminPayment(deleteTargetPayment._id);
+      if (!res?.success) {
+        throw new Error(res?.message || "Failed to delete payment record");
+      }
+      const deletedInv =
+        deleteTargetPayment.invoiceNumber ||
+        `INV-${String(deleteTargetPayment._id).slice(-6).toUpperCase()}`;
+      toast.success(`Payment deleted (${deletedInv})`);
+
+      if (recentAddedPayment?._id === deleteTargetPayment._id) {
+        setRecentAddedPayment(null);
+      }
+
+      const wasLastItemOnPage = payments.length <= 1 && page > 1;
+      setDeleteTargetPayment(null);
+      if (wasLastItemOnPage) {
+        setPage((p) => Math.max(1, p - 1));
+      } else {
+        fetchPayments();
+      }
+    } catch (err) {
+      console.error("Error deleting payment:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to delete payment");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -914,6 +952,17 @@ export default function PaymentsList() {
                           >
                             <Eye className="h-4 w-4" />
                           </Link>
+
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTargetPayment(payment)}
+                            title="Delete Payment"
+                            aria-label={`Delete payment ${invNo} for ${payment.name}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50/70 px-2.5 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 hover:border-red-300 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -978,6 +1027,82 @@ export default function PaymentsList() {
         onClose={() => setAlertModalPayment(null)}
         onAlertSent={handleInvoiceSent}
       />
+
+      {/* Delete Payment Confirmation Dialog */}
+      <NativeModalDialog
+        open={Boolean(deleteTargetPayment)}
+        onClose={() => !isDeleting && setDeleteTargetPayment(null)}
+        titleId={deleteDialogTitleId}
+        closedBy={isDeleting ? "none" : "any"}
+        maxWidthClass="max-w-md"
+      >
+        <div className="p-6 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 id={deleteDialogTitleId} className="text-base font-bold text-gray-900">
+                Delete Payment Record?
+              </h1>
+              <p className="text-xs text-gray-600 mt-1">
+                This action permanently removes the payment and invoice record from the database and cannot be undone.
+              </p>
+            </div>
+          </div>
+
+          {deleteTargetPayment && (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5 text-xs space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500">Invoice</span>
+                <span className="font-mono font-bold text-indigo-700">
+                  {deleteTargetPayment.invoiceNumber ||
+                    `INV-${String(deleteTargetPayment._id).slice(-6).toUpperCase()}`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500">Student</span>
+                <span className="font-semibold text-gray-900 truncate max-w-[220px]">
+                  {deleteTargetPayment.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-gray-500">Course</span>
+                <span className="font-medium text-gray-800 truncate max-w-[220px]">
+                  {deleteTargetPayment.course || "N/A"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-gray-200">
+                <span className="text-gray-500 font-medium">Amount Paid</span>
+                <span className="font-bold text-red-700 text-sm">
+                  {formatCurrencyINR(deleteTargetPayment.paymentAmount, true)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-2.5 pt-2">
+            <button
+              type="button"
+              autoFocus
+              disabled={isDeleting}
+              onClick={() => setDeleteTargetPayment(null)}
+              className="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={handleConfirmDelete}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-red-700 disabled:opacity-60 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {isDeleting ? "Deleting..." : "Delete Payment"}
+            </button>
+          </div>
+        </div>
+      </NativeModalDialog>
     </div>
   );
 }
