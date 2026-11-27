@@ -30,6 +30,8 @@ import {
 } from "../../../utils/paymentFormatters";
 
 const getInitialFormState = () => ({
+  name: "",
+  email: "",
   courseId: "",
   course: "",
   installmentLabel: "Full Course Fee",
@@ -49,12 +51,62 @@ const getInitialFormState = () => ({
   notes: "",
 });
 
+const buildEditFormState = (payment) => {
+  if (!payment) return getInitialFormState();
+  const rawDate = payment.paymentDate || payment.createdAt;
+  let formattedDate = new Date().toISOString().slice(0, 10);
+  if (rawDate) {
+    const parsed = new Date(rawDate);
+    if (!Number.isNaN(parsed.getTime())) {
+      formattedDate = parsed.toISOString().slice(0, 10);
+    }
+  }
+  const txnVal =
+    payment.transactionId ||
+    (payment.paymentId && payment.paymentId !== payment.invoiceNumber
+      ? payment.paymentId
+      : "");
+
+  return {
+    name: payment.name || payment.userId?.fullname || "",
+    email: payment.email || payment.userId?.email || "",
+    courseId: payment.courseId?._id || (typeof payment.courseId === "string" ? payment.courseId : "") || "",
+    course: payment.course || payment.courseId?.title || "",
+    installmentLabel: payment.installmentLabel || "Full Course Fee",
+    totalCourseFee:
+      payment.totalCourseFee !== null && payment.totalCourseFee !== undefined
+        ? String(payment.totalCourseFee)
+        : "",
+    discountAmount:
+      payment.discountAmount !== null && payment.discountAmount !== undefined
+        ? String(payment.discountAmount)
+        : "0",
+    paymentAmount:
+      payment.paymentAmount !== null && payment.paymentAmount !== undefined
+        ? String(payment.paymentAmount)
+        : "",
+    paymentMethod: payment.paymentMethod || "upi",
+    transactionId: txnVal,
+    paymentDate: formattedDate,
+    status: payment.status || "completed",
+    phone: payment.phone && payment.phone !== "Not provided" ? payment.phone : "",
+    address: payment.address && payment.address !== "Not provided" ? payment.address : "",
+    gstRate: String(payment.gstRate ?? 18),
+    gstInclusive: payment.gstInclusive !== false,
+    companyGstin: payment.companyGstin || "",
+    studentGstin: payment.studentGstin || "",
+    notes: payment.notes || "",
+  };
+};
+
 export default function AddPaymentModal({
   open,
   onClose,
   onSuccess,
   initialUserId = "",
+  editingPayment = null,
 }) {
+  const isEditMode = Boolean(editingPayment?._id);
   const titleId = useId();
   const fieldPrefix = useId();
 
@@ -127,9 +179,21 @@ export default function AddPaymentModal({
     });
   };
 
-  // Load Users & Courses when modal opens
+  // Load Users & Courses when modal opens (and hydrate saved payment values in Edit mode)
   useEffect(() => {
     if (!open) return;
+
+    if (editingPayment?._id) {
+      discountManualRef.current = true;
+      paymentManualRef.current = true;
+      const hydrated = buildEditFormState(editingPayment);
+      setFormData(hydrated);
+      latestFormRef.current = hydrated;
+      setErrors({});
+    } else {
+      discountManualRef.current = false;
+      paymentManualRef.current = false;
+    }
 
     let cancelled = false;
     const loadDirectoryData = async () => {
@@ -163,7 +227,23 @@ export default function AddPaymentModal({
         setUsers(userList);
         setCourses(sortedCourses);
 
-        if (initialUserId) {
+        if (editingPayment?._id) {
+          const editUserId =
+            editingPayment.userId?._id ||
+            (typeof editingPayment.userId === "string" ? editingPayment.userId : "");
+          const editEmail = String(editingPayment.email || "").trim().toLowerCase();
+          const matchedUser =
+            userList.find((u) => editUserId && String(u._id) === String(editUserId)) ||
+            userList.find((u) => editEmail && (u.email || "").trim().toLowerCase() === editEmail);
+
+          if (matchedUser) {
+            selectStudentFromList(matchedUser, sortedCourses, { preserveExistingForm: true });
+          } else {
+            setSelectedUser(null);
+            latestSelectedUserRef.current = null;
+            setShowUserPicker(false);
+          }
+        } else if (initialUserId) {
           const match = userList.find(
             (u) => String(u._id) === String(initialUserId)
           );
@@ -183,7 +263,7 @@ export default function AddPaymentModal({
     return () => {
       cancelled = true;
     };
-  }, [open, initialUserId]);
+  }, [open, initialUserId, editingPayment?._id]);
 
   const resetModalState = () => {
     activeUserIdRef.current = "";
@@ -278,13 +358,17 @@ export default function AddPaymentModal({
     }));
   };
 
-  const selectStudentFromList = async (user, availableCourses = courses) => {
+  const selectStudentFromList = async (
+    user,
+    availableCourses = courses,
+    { preserveExistingForm = false } = {}
+  ) => {
     const userId = String(user._id);
     activeUserIdRef.current = userId;
     setSelectedUser(user);
     latestSelectedUserRef.current = user;
     setShowUserPicker(false);
-    setErrors((prev) => ({ ...prev, user: undefined }));
+    setErrors((prev) => ({ ...prev, user: undefined, name: undefined, email: undefined }));
 
     // Collect enrolled course IDs & any populated course objects from user record
     const populatedCourses = (
@@ -300,12 +384,23 @@ export default function AddPaymentModal({
     );
     setEnrolledCourseIds(new Set(ids));
 
-    // Pre-fill contact info & sync discount immediately if totalCourseFee is already set
+    // Pre-fill contact info & sync discount immediately if totalCourseFee is already set (unless hydrating an edit)
     setFormData((prev) => {
+      if (preserveExistingForm) {
+        return {
+          ...prev,
+          name: user.fullname || prev.name || "",
+          email: user.email || prev.email || "",
+          phone: prev.phone || user.phone || "",
+          address: prev.address || user.address || "",
+        };
+      }
       const hasFee = prev.totalCourseFee !== "" && !Number.isNaN(Number(prev.totalCourseFee));
       if (!hasFee || discountManualRef.current) {
         return {
           ...prev,
+          name: user.fullname || prev.name || "",
+          email: user.email || prev.email || "",
           phone: user.phone || prev.phone || "",
           address: user.address || prev.address || "",
         };
@@ -316,6 +411,8 @@ export default function AddPaymentModal({
       );
       return {
         ...prev,
+        name: user.fullname || prev.name || "",
+        email: user.email || prev.email || "",
         phone: user.phone || prev.phone || "",
         address: user.address || prev.address || "",
         discountAmount: String(dAmt),
@@ -339,10 +436,13 @@ export default function AddPaymentModal({
 
       if (activeUserIdRef.current !== userId) return;
 
-      const fetchedHistory =
+      const rawHistory =
         historyRes.status === "fulfilled" && historyRes.value?.success
           ? historyRes.value.payments || []
           : [];
+      const fetchedHistory = editingPayment?._id
+        ? rawHistory.filter((p) => String(p._id) !== String(editingPayment._id))
+        : rawHistory;
       setStudentPayments(fetchedHistory);
       latestStudentPaymentsRef.current = fetchedHistory;
 
@@ -413,6 +513,13 @@ export default function AddPaymentModal({
         setFormData((prev) => {
           const nextPhone = prev.phone || effectiveUser.phone || "";
           const nextAddress = prev.address || effectiveUser.address || "";
+          if (preserveExistingForm) {
+            return {
+              ...prev,
+              phone: nextPhone,
+              address: nextAddress,
+            };
+          }
           const effectiveFee =
             resolvedForExisting.pricingSource === "snapshot" && resolvedForExisting.totalCourseFee > 0
               ? resolvedForExisting.totalCourseFee
@@ -435,7 +542,7 @@ export default function AddPaymentModal({
             paymentAmount: paymentManualRef.current ? prev.paymentAmount : String(nextNetPayable),
           };
         });
-      } else if (!currentForm.course && ids.size === 1) {
+      } else if (!preserveExistingForm && !currentForm.course && ids.size === 1) {
         // Auto-pick single enrolled course if no course chosen yet
         const singleId = Array.from(ids)[0];
         const matchedCourse = combinedCourses.find((c) => String(c._id) === singleId);
@@ -572,12 +679,14 @@ export default function AddPaymentModal({
     () =>
       selectedUser
         ? filterCompletedPaymentsForCourse(
-            studentPayments,
+            editingPayment?._id
+              ? studentPayments.filter((p) => String(p._id) !== String(editingPayment._id))
+              : studentPayments,
             formData.courseId,
             formData.course
           )
         : [],
-    [selectedUser, studentPayments, formData.courseId, formData.course]
+    [selectedUser, studentPayments, formData.courseId, formData.course, editingPayment?._id]
   );
 
   const previouslyPaidAmount = useMemo(
@@ -594,11 +703,15 @@ export default function AddPaymentModal({
     () =>
       Number(
         studentPayments
-          .filter((p) => (p.status || "").toLowerCase() === "completed")
+          .filter(
+            (p) =>
+              (p.status || "").toLowerCase() === "completed" &&
+              (!editingPayment?._id || String(p._id) !== String(editingPayment._id))
+          )
           .reduce((sum, p) => sum + (Number(p.paymentAmount) || 0), 0)
           .toFixed(2)
       ),
-    [studentPayments]
+    [studentPayments, editingPayment?._id]
   );
 
   const netBeforeCurrentPayment = useMemo(
@@ -752,8 +865,16 @@ export default function AddPaymentModal({
 
   const validateForm = () => {
     const nextErrors = {};
-    if (!selectedUser) {
+    if (!selectedUser && !isEditMode) {
       nextErrors.user = "Please select a student from the user database.";
+    }
+    if (!selectedUser && isEditMode) {
+      if (!formData.name.trim()) {
+        nextErrors.name = "Student name is required.";
+      }
+      if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email.trim())) {
+        nextErrors.email = "A valid student email is required.";
+      }
     }
     if (!formData.course.trim()) {
       nextErrors.course = "Please select or enter a course name.";
@@ -776,11 +897,11 @@ export default function AddPaymentModal({
     try {
       setIsSubmitting(true);
       const payload = {
-        userId: selectedUser._id,
-        name: selectedUser.fullname,
-        email: selectedUser.email,
-        phone: formData.phone.trim() || selectedUser.phone || "Not provided",
-        address: formData.address.trim() || selectedUser.address || "Not provided",
+        userId: selectedUser?._id || null,
+        name: (selectedUser?.fullname || formData.name || "").trim(),
+        email: (selectedUser?.email || formData.email || "").trim().toLowerCase(),
+        phone: formData.phone.trim() || selectedUser?.phone || "Not provided",
+        address: formData.address.trim() || selectedUser?.address || "Not provided",
         courseId: formData.courseId || null,
         course: formData.course.trim(),
         installmentLabel: formData.installmentLabel.trim() || "Full Course Fee",
@@ -802,17 +923,26 @@ export default function AddPaymentModal({
         notes: formData.notes.trim(),
       };
 
-      const res = await paymentApi.createAdminPayment(payload);
+      const res = isEditMode
+        ? await paymentApi.updateAdminPayment(editingPayment._id, payload)
+        : await paymentApi.createAdminPayment(payload);
+
       if (res?.success) {
-        toast.success(`Payment added (${res.payment?.invoiceNumber || "Saved"})!`);
-        const created = res.payment;
+        toast.success(
+          isEditMode
+            ? `Payment updated (${res.payment?.invoiceNumber || "Saved"})!`
+            : `Payment added (${res.payment?.invoiceNumber || "Saved"})!`
+        );
+        const savedPayment = res.payment;
         resetModalState();
-        onSuccess(created);
+        onSuccess(savedPayment, { isEdit: isEditMode });
       } else {
-        throw new Error(res?.message || "Failed to add payment");
+        throw new Error(
+          res?.message || (isEditMode ? "Failed to update payment" : "Failed to add payment")
+        );
       }
     } catch (err) {
-      console.error("Error adding payment:", err);
+      console.error(isEditMode ? "Error updating payment:" : "Error adding payment:", err);
       toast.error(err.response?.data?.message || err.message || "Failed to save payment");
     } finally {
       setIsSubmitting(false);
@@ -835,10 +965,14 @@ export default function AddPaymentModal({
           </div>
           <div>
             <h1 id={titleId} className="text-lg font-bold leading-tight">
-              Add Student Payment
+              {isEditMode
+                ? `Edit Payment${editingPayment?.invoiceNumber ? ` • ${editingPayment.invoiceNumber}` : ""}`
+                : "Add Student Payment"}
             </h1>
             <p className="text-xs text-indigo-200 mt-0.5">
-              Select a student from the user database, record payment details &amp; generate GST invoice
+              {isEditMode
+                ? "Update student, course fee, discount, paid amount, or invoice details"
+                : "Select a student from the user database, record payment details & generate GST invoice"}
             </p>
           </div>
         </div>
@@ -846,7 +980,7 @@ export default function AddPaymentModal({
           type="button"
           onClick={handleClose}
           disabled={isSubmitting}
-          aria-label="Close Add Payment dialog"
+          aria-label={isEditMode ? "Close Edit Payment dialog" : "Close Add Payment dialog"}
           className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-40"
         >
           <X className="h-5 w-5" />
@@ -868,16 +1002,16 @@ export default function AddPaymentModal({
                 1
               </span>
               <h2 className="text-sm font-bold text-gray-900">
-                Select Student from User Database <span className="text-red-500">*</span>
+                Select Student from User Database {!isEditMode && <span className="text-red-500">*</span>}
               </h2>
             </div>
-            {selectedUser && !showUserPicker && (
+            {(selectedUser || isEditMode) && !showUserPicker && (
               <button
                 type="button"
                 onClick={() => setShowUserPicker(true)}
                 className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
               >
-                Change Student
+                {selectedUser ? "Change Student" : "Link Student from DB"}
               </button>
             )}
           </div>
@@ -1047,9 +1181,71 @@ export default function AddPaymentModal({
             </p>
           )}
 
-          {/* Billing contact details once student is picked */}
-          {selectedUser && (
+          {/* Billing contact details once student is picked (or direct edit for unlinked records) */}
+          {(selectedUser || isEditMode) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-gray-100">
+              {(!selectedUser || isEditMode) && (
+                <>
+                  <div>
+                    <label
+                      htmlFor={`${fieldPrefix}-studentName`}
+                      className="block text-xs font-semibold text-gray-700 mb-1"
+                    >
+                      Student Name (on Invoice) {isEditMode && !selectedUser && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      id={`${fieldPrefix}-studentName`}
+                      name="name"
+                      type="text"
+                      required={isEditMode && !selectedUser}
+                      aria-invalid={Boolean(errors.name)}
+                      readOnly={Boolean(selectedUser)}
+                      value={selectedUser ? selectedUser.fullname || formData.name : formData.name}
+                      onChange={(e) => handleFieldChange("name", e.target.value)}
+                      placeholder="Student full name"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 focus:outline-none ${
+                        selectedUser
+                          ? "bg-gray-50 border-gray-200 text-gray-700"
+                          : errors.name
+                            ? "border-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:border-indigo-500"
+                      }`}
+                    />
+                    {errors.name && (
+                      <p className="mt-1 text-xs text-red-600">{errors.name}</p>
+                    )}
+                  </div>
+                  <div>
+                    <label
+                      htmlFor={`${fieldPrefix}-studentEmail`}
+                      className="block text-xs font-semibold text-gray-700 mb-1"
+                    >
+                      Student Email (on Invoice) {isEditMode && !selectedUser && <span className="text-red-500">*</span>}
+                    </label>
+                    <input
+                      id={`${fieldPrefix}-studentEmail`}
+                      name="email"
+                      type="email"
+                      required={isEditMode && !selectedUser}
+                      aria-invalid={Boolean(errors.email)}
+                      readOnly={Boolean(selectedUser)}
+                      value={selectedUser ? selectedUser.email || formData.email : formData.email}
+                      onChange={(e) => handleFieldChange("email", e.target.value)}
+                      placeholder="student@example.com"
+                      className={`w-full rounded-lg border px-3 py-2 text-sm text-gray-900 focus:outline-none ${
+                        selectedUser
+                          ? "bg-gray-50 border-gray-200 text-gray-700"
+                          : errors.email
+                            ? "border-red-500 focus:border-red-500"
+                            : "border-gray-300 focus:border-indigo-500"
+                      }`}
+                    />
+                    {errors.email && (
+                      <p className="mt-1 text-xs text-red-600">{errors.email}</p>
+                    )}
+                  </div>
+                </>
+              )}
               <div>
                 <label
                   htmlFor={`${fieldPrefix}-phone`}
@@ -1648,6 +1844,13 @@ export default function AddPaymentModal({
               >
                 <option value="completed">Completed (Paid)</option>
                 <option value="pending">Pending</option>
+                {(isEditMode || ["failed", "refunded", "cancelled"].includes(formData.status)) && (
+                  <>
+                    <option value="failed">Failed</option>
+                    <option value="refunded">Refunded</option>
+                    <option value="cancelled">Cancelled</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -1689,12 +1892,12 @@ export default function AddPaymentModal({
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Saving Payment...
+                {isEditMode ? "Updating Payment..." : "Saving Payment..."}
               </>
             ) : (
               <>
                 <Check className="h-4 w-4" />
-                Save Payment
+                {isEditMode ? "Update Payment" : "Save Payment"}
               </>
             )}
           </button>

@@ -20,6 +20,7 @@ import {
   CreditCard,
   BellRing,
   User,
+  Pencil,
 } from "lucide-react";
 import paymentApi from "../../api/paymentApi";
 import userApi from "../../api/userApi";
@@ -61,6 +62,7 @@ export default function PaymentsList() {
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(Boolean(initialUserId));
+  const [editingPayment, setEditingPayment] = useState(null);
   const [recentAddedPayment, setRecentAddedPayment] = useState(null);
   const [invoiceModalPayment, setInvoiceModalPayment] = useState(null);
   const [alertModalPayment, setAlertModalPayment] = useState(null);
@@ -176,19 +178,31 @@ export default function PaymentsList() {
     fetchPayments();
   };
 
-  const handleAddSuccess = (createdPayment) => {
+  const handleAddSuccess = (savedPayment, meta = {}) => {
     setIsAddModalOpen(false);
+    setEditingPayment(null);
     if (initialUserId) {
       searchParams.delete("userId");
       setSearchParams(searchParams, { replace: true });
     }
-    setRecentAddedPayment(createdPayment);
+    if (meta?.isEdit && savedPayment?._id) {
+      setPayments((prev) =>
+        prev.map((p) => (p._id === savedPayment._id ? savedPayment : p))
+      );
+      if (recentAddedPayment?._id === savedPayment._id) {
+        setRecentAddedPayment(savedPayment);
+      }
+      fetchPayments();
+      return;
+    }
+    setRecentAddedPayment(savedPayment);
     setPage(1);
     fetchPayments();
   };
 
   const handleCloseAddModal = () => {
     setIsAddModalOpen(false);
+    setEditingPayment(null);
     if (initialUserId) {
       searchParams.delete("userId");
       setSearchParams(searchParams, { replace: true });
@@ -264,7 +278,10 @@ export default function PaymentsList() {
 
           <button
             type="button"
-            onClick={() => setIsAddModalOpen(true)}
+            onClick={() => {
+              setEditingPayment(null);
+              setIsAddModalOpen(true);
+            }}
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 transition-all"
           >
             <Plus className="h-4 w-4" />
@@ -862,6 +879,20 @@ export default function PaymentsList() {
 
                           <button
                             type="button"
+                            onClick={() => {
+                              setEditingPayment(payment);
+                              setIsAddModalOpen(true);
+                            }}
+                            title="Edit Payment"
+                            aria-label={`Edit payment for ${payment.name}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 hover:text-indigo-700 transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => handleDownloadPdf(payment)}
                             disabled={downloadingId === payment._id}
                             title="Download Invoice PDF"
@@ -923,12 +954,13 @@ export default function PaymentsList() {
         )}
       </div>
 
-      {/* Add Student Payment Modal */}
+      {/* Add / Edit Student Payment Modal */}
       <AddPaymentModal
         open={isAddModalOpen}
         onClose={handleCloseAddModal}
         onSuccess={handleAddSuccess}
         initialUserId={initialUserId || (userFilter !== "all" ? userFilter : "")}
+        editingPayment={editingPayment}
       />
 
       {/* Send Payment Invoice Mail Preview Popup */}

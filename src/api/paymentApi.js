@@ -19,6 +19,11 @@ const paymentApi = {
     return response.data;
   },
 
+  updateAdminPayment: async (id, payload) => {
+    const response = await api.put(`/admin/payments/${id}`, payload);
+    return response.data;
+  },
+
   getPaymentById: async (id) => {
     const response = await api.get(`/admin/payments/${id}`);
     return response.data;
