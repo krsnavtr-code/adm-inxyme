@@ -1,17 +1,47 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Modal, Form, Select, message, Spin, Tag, Input } from "antd";
-import { FaSearch, FaBook, FaTimes, FaGraduationCap } from "react-icons/fa";
+import {
+  FaSearch,
+  FaBook,
+  FaGraduationCap,
+  FaUserMinus,
+} from "react-icons/fa";
 import api from "../../api/axios";
+import userApi from "../../api/userApi";
 
 const { Option } = Select;
 
-const EnrollUserModal = ({ visible, onCancel, onEnroll, userId, userName }) => {
+const getEnrollmentCourseId = (enrollment) => {
+  if (!enrollment) return null;
+  if (enrollment.course && typeof enrollment.course === "object") {
+    return enrollment.course._id?.toString() || null;
+  }
+  if (enrollment.course) return enrollment.course.toString();
+  if (enrollment.courseId) return enrollment.courseId.toString();
+  return null;
+};
+
+const getEnrollmentRowKey = (enrollment, index) =>
+  enrollment?._id?.toString() ||
+  getEnrollmentCourseId(enrollment) ||
+  `enrollment-${index}`;
+
+const EnrollUserModal = ({
+  visible,
+  onCancel,
+  onEnroll,
+  onUnenroll,
+  userId,
+  userName,
+}) => {
   const [form] = Form.useForm();
   const [courses, setCourses] = useState([]);
   const [userEnrollments, setUserEnrollments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrolledSearchTerm, setEnrolledSearchTerm] = useState("");
+  const [confirmingKey, setConfirmingKey] = useState(null);
+  const [unenrollingKey, setUnenrollingKey] = useState(null);
 
   // Fetch user's current enrollments and all available courses
   const fetchData = async () => {
@@ -128,25 +158,21 @@ const EnrollUserModal = ({ visible, onCancel, onEnroll, userId, userName }) => {
       fetchData();
       form.resetFields();
       setEnrolledSearchTerm("");
+      setConfirmingKey(null);
+      setUnenrollingKey(null);
     } else {
       setUserEnrollments([]);
       form.resetFields();
       setEnrolledSearchTerm("");
+      setConfirmingKey(null);
+      setUnenrollingKey(null);
     }
   }, [visible, userId]);
 
   // Set of course IDs already enrolled by this user
   const enrolledCourseIds = useMemo(() => {
     return new Set(
-      userEnrollments
-        .map((e) => {
-          if (e.course && typeof e.course === "object")
-            return e.course._id?.toString();
-          if (e.course) return e.course.toString();
-          if (e.courseId) return e.courseId.toString();
-          return null;
-        })
-        .filter(Boolean)
+      userEnrollments.map(getEnrollmentCourseId).filter(Boolean)
     );
   }, [userEnrollments]);
 
@@ -232,6 +258,43 @@ const EnrollUserModal = ({ visible, onCancel, onEnroll, userId, userName }) => {
     });
   };
 
+  const handleDeEnrollCourse = async (enrollment, rowKey) => {
+    const courseId = getEnrollmentCourseId(enrollment);
+    const courseTitle =
+      enrollment.course?.title || enrollment.courseTitle || "this course";
+
+    if (!courseId && !enrollment._id) {
+      message.error("Unable to identify course enrollment to remove");
+      return;
+    }
+
+    try {
+      setUnenrollingKey(rowKey);
+      const payload = {
+        userId,
+        courseId,
+        enrollmentId: enrollment._id,
+      };
+      if (typeof onUnenroll === "function") {
+        await onUnenroll(payload);
+      } else {
+        await userApi.adminUnenrollUser(payload);
+      }
+      message.success(`Successfully de-enrolled student from "${courseTitle}"`);
+      setConfirmingKey(null);
+      await fetchData();
+    } catch (error) {
+      console.error("Error de-enrolling user:", error);
+      message.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to de-enroll student from course"
+      );
+    } finally {
+      setUnenrollingKey(null);
+    }
+  };
+
   return (
     <Modal
       title={
@@ -309,7 +372,8 @@ const EnrollUserModal = ({ visible, onCancel, onEnroll, userId, userName }) => {
               </div>
             ) : (
               <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
-                {filteredUserEnrollments.map((enrollment) => {
+                {filteredUserEnrollments.map((enrollment, index) => {
+                  const rowKey = getEnrollmentRowKey(enrollment, index);
                   const courseTitle =
                     enrollment.course?.title ||
                     enrollment.courseTitle ||
@@ -320,64 +384,123 @@ const EnrollUserModal = ({ visible, onCancel, onEnroll, userId, userName }) => {
                     enrollment.course?.thumbnail ||
                     enrollment.course?.image ||
                     null;
+                  const isConfirming = confirmingKey === rowKey;
+                  const isUnenrolling = unenrollingKey === rowKey;
 
                   return (
                     <div
-                      key={
-                        enrollment._id ||
-                        `${enrollment.courseId || enrollment.course}-${Math.random()}`
-                      }
-                      className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-200 shadow-xs hover:border-gray-300 transition-all gap-3"
+                      key={rowKey}
+                      className="bg-white p-3 rounded-lg border border-gray-200 shadow-xs hover:border-gray-300 transition-all"
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {thumbnail ? (
-                          <img
-                            src={thumbnail}
-                            alt=""
-                            className="w-10 h-10 rounded-md object-cover border border-gray-200 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
-                            <FaBook className="text-xs" />
-                          </div>
-                        )}
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          {thumbnail ? (
+                            <img
+                              src={thumbnail}
+                              alt=""
+                              className="w-10 h-10 rounded-md object-cover border border-gray-200 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
+                              <FaBook className="text-xs" aria-hidden="true" />
+                            </div>
+                          )}
 
-                        <div className="min-w-0 flex-1">
-                          <div
-                            className="font-semibold text-gray-900 text-sm truncate"
-                            title={courseTitle}
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className="font-semibold text-gray-900 text-sm truncate"
+                              title={courseTitle}
+                            >
+                              {courseTitle}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                              {enrolledDate && (
+                                <span>
+                                  Enrolled:{" "}
+                                  {new Date(enrolledDate).toLocaleDateString()}
+                                </span>
+                              )}
+                              {enrollment.progress !== undefined && (
+                                <span className="text-indigo-600 font-medium">
+                                  Progress: {enrollment.progress}%
+                                </span>
+                              )}
+                              {enrollment.batch?.name && (
+                                <span className="text-gray-600">
+                                  Batch: {enrollment.batch.name}
+                                </span>
+                              )}
+                              {enrollment.certificateIssued && (
+                                <span className="text-emerald-600 font-medium">
+                                  • Certificate Issued
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-2">
+                          {getStatusTag(enrollment.status || "active")}
+                          <button
+                            type="button"
+                            disabled={
+                              Boolean(unenrollingKey) || isConfirming
+                            }
+                            aria-label={`De-enroll ${userName || "student"} from ${courseTitle}`}
+                            aria-expanded={isConfirming}
+                            onClick={() => setConfirmingKey(rowKey)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors cursor-pointer"
                           >
-                            {courseTitle}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                            {enrolledDate && (
-                              <span>
-                                Enrolled:{" "}
-                                {new Date(enrolledDate).toLocaleDateString()}
-                              </span>
-                            )}
-                            {enrollment.progress !== undefined && (
-                              <span className="text-indigo-600 font-medium">
-                                Progress: {enrollment.progress}%
-                              </span>
-                            )}
-                            {enrollment.batch?.name && (
-                              <span className="text-gray-600">
-                                Batch: {enrollment.batch.name}
-                              </span>
-                            )}
-                            {enrollment.certificateIssued && (
-                              <span className="text-emerald-600 font-medium">
-                                • Certificate Issued
-                              </span>
-                            )}
-                          </div>
+                            <FaUserMinus
+                              className="text-[11px]"
+                              aria-hidden="true"
+                            />
+                            <span>
+                              {isUnenrolling ? "Removing..." : "De-enroll"}
+                            </span>
+                          </button>
                         </div>
                       </div>
 
-                      <div className="shrink-0">
-                        {getStatusTag(enrollment.status || "active")}
-                      </div>
+                      {isConfirming && (
+                        <div
+                          role="region"
+                          aria-label={`Confirm de-enrollment from ${courseTitle}`}
+                          className="mt-2.5 pt-2.5 border-t border-rose-100 bg-rose-50/70 -mx-3 -mb-3 px-3 py-2.5 rounded-b-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                        >
+                          <p
+                            id={`confirm-msg-${rowKey}`}
+                            className="text-xs text-rose-900 font-medium"
+                          >
+                            Remove access to{" "}
+                            <span className="font-bold">{courseTitle}</span>?
+                          </p>
+                          <div className="flex items-center gap-2 shrink-0 justify-end">
+                            <button
+                              type="button"
+                              autoFocus
+                              disabled={isUnenrolling}
+                              onClick={() => setConfirmingKey(null)}
+                              className="px-2.5 py-1 rounded-md text-xs font-semibold text-gray-700 bg-white hover:bg-gray-100 border border-gray-300 disabled:opacity-50 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isUnenrolling}
+                              aria-describedby={`confirm-msg-${rowKey}`}
+                              onClick={() =>
+                                handleDeEnrollCourse(enrollment, rowKey)
+                              }
+                              className="px-2.5 py-1 rounded-md text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 border border-rose-700 disabled:opacity-50 cursor-pointer"
+                            >
+                              {isUnenrolling
+                                ? "De-enrolling..."
+                                : "Confirm De-enroll"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

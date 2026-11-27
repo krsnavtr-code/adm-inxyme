@@ -262,6 +262,22 @@ const userApi = {
     }
   },
 
+  // Admin de-enrolls a user from a course
+  adminUnenrollUser: async ({ userId, courseId, courseIds, enrollmentId }) => {
+    try {
+      const response = await api.post("/enrollments/admin-unenroll", {
+        userId,
+        courseId,
+        courseIds,
+        enrollmentId,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error de-enrolling user from course:", error);
+      throw error.response?.data || error;
+    }
+  },
+
   // Forgot password - send reset email
   forgotPassword: async (email) => {
     try {

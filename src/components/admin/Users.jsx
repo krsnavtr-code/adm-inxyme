@@ -459,9 +459,21 @@ const Users = () => {
   const handleEnrollUser = async (userId, courseId, status) => {
     try {
       await userApi.adminEnrollUser(userId, courseId, status);
+      await fetchUsers();
       return true;
     } catch (error) {
       console.error("Error enrolling user in course:", error);
+      throw error;
+    }
+  };
+
+  const handleUnenrollUser = async ({ userId, courseId, enrollmentId }) => {
+    try {
+      await userApi.adminUnenrollUser({ userId, courseId, enrollmentId });
+      await fetchUsers();
+      return true;
+    } catch (error) {
+      console.error("Error de-enrolling user from course:", error);
       throw error;
     }
   };
@@ -961,6 +973,7 @@ const Users = () => {
           setCurrentUser(null);
         }}
         onEnroll={handleEnrollUser}
+        onUnenroll={handleUnenrollUser}
       />
 
       <SendLmsInviteModal
