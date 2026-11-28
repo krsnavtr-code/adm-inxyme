@@ -1,5 +1,11 @@
 // contactApi.js - API functions for contact-related operations
 import axios from "axios";
+import {
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  isInactiveAccountError,
+  stampAccountVerified,
+} from "../utils/authSession";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -39,7 +45,13 @@ api.interceptors.request.use(
 // Response interceptor for handling errors and logging
 api.interceptors.response.use(
   (response) => {
-    // Log successful responses in development
+    if (response?.config?.headers?.Authorization) {
+      if (response?.data?.user?.isActive === false) {
+        forceLogoutInactiveAccount();
+        return Promise.reject(new Error("Account is inactive"));
+      }
+      stampAccountVerified();
+    }
     if (import.meta.env.DEV) {
       console.log(`[${response.status}] ${response.config.url}`, response.data);
     }
@@ -62,6 +74,14 @@ api.interceptors.response.use(
       stack: import.meta.env.DEV ? error.stack : undefined,
     });
 
+    if (isInactiveAccountError(error)) {
+      forceLogoutInactiveAccount(error.response?.data?.message);
+      errorResponse.shouldLogout = true;
+      errorResponse.message =
+        error.response?.data?.message || "Your account is inactive.";
+      return Promise.reject(errorResponse);
+    }
+
     // Handle specific error statuses
     if (error.response) {
       // Server responded with error status (4xx, 5xx)
@@ -69,18 +89,14 @@ api.interceptors.response.use(
 
       // Handle common error statuses
       if (status === 401) {
-        // For contacts API, we'll handle 401 in the component
-        if (!error.config.url.includes("/contacts")) {
-          // Only redirect for non-contacts API calls
-          if (typeof window !== "undefined") {
-            window.location.href =
-              "/login?redirect=" + encodeURIComponent(window.location.pathname);
-          }
-        } else {
-          errorResponse.shouldLogout = true;
-          errorResponse.message =
-            "Your session has expired. Please log in again.";
+        clearAuthStorage();
+        if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+          window.location.href =
+            "/login?redirect=" + encodeURIComponent(window.location.pathname);
         }
+        errorResponse.shouldLogout = true;
+        errorResponse.message =
+          data?.message || "Your session has expired. Please log in again.";
       } else if (status === 403) {
         // Forbidden - show access denied
         errorResponse.message =

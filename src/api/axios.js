@@ -1,5 +1,11 @@
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import {
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  isInactiveAccountError,
+  stampAccountVerified,
+} from "../utils/authSession";
 
 // Create axios instance with base URL and headers
 // console.log("axios baseURL:", import.meta.env.VITE_API_BASE_URL);
@@ -98,14 +104,27 @@ api.interceptors.request.use(
 // Response interceptor to handle errors and token refresh
 api.interceptors.response.use(
   (response) => {
-    // You can modify successful responses here if needed
+    const sentAuth = Boolean(response?.config?.headers?.Authorization);
+    if (sentAuth) {
+      if (response?.data?.user?.isActive === false) {
+        forceLogoutInactiveAccount();
+        return Promise.reject(new Error("Account is inactive"));
+      }
+      stampAccountVerified();
+    }
     return response;
   },
   async (error) => {
     const originalRequest = error.config;
 
+    // Immediately force logout when backend reports inactive/deactivated account (skip refresh retry)
+    if (isInactiveAccountError(error)) {
+      forceLogoutInactiveAccount(error.response?.data?.message);
+      return Promise.reject(error);
+    }
+
     // If the error is not a 401 or it's a retry request, reject
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    if (error.response?.status !== 401 || originalRequest?._retry) {
       return Promise.reject(error);
     }
 
@@ -187,6 +206,11 @@ api.interceptors.response.use(
           user,
         } = response.data;
 
+        if (user && user.isActive === false) {
+          forceLogoutInactiveAccount();
+          return Promise.reject(new Error("Account is inactive"));
+        }
+
         // Store the new tokens
         localStorage.setItem("token", newToken);
         if (newRefreshToken) {
@@ -212,10 +236,17 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("Failed to refresh token:", refreshError);
 
+        if (isInactiveAccountError(refreshError)) {
+          forceLogoutInactiveAccount(refreshError.response?.data?.message);
+          return Promise.reject({
+            ...refreshError,
+            message: refreshError.response?.data?.message || "Account is inactive",
+            isAuthError: true,
+          });
+        }
+
         // Clear all auth data
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
+        clearAuthStorage();
 
         // Only redirect if we're not already on the login page
         if (!window.location.pathname.includes("/login")) {
@@ -233,13 +264,13 @@ api.interceptors.response.use(
     // Handle other error statuses
     if (error.response) {
       const { status, data } = error.response;
+      const pathname = window.location.pathname || "/";
       const isPublicRoute = [
         "/login",
         "/signup",
-        "/",
         "/about",
         "/contact",
-      ].some((route) => window.location.pathname.startsWith(route));
+      ].some((route) => pathname.startsWith(route));
 
       if (status === 401 && !isPublicRoute) {
         // Don't show toast here as it might be a background request

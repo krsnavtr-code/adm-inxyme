@@ -30,15 +30,15 @@ export default function PrivateRoute({
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check if user is active
+  // Enforce active account status in admin panel (never block admin/employee by LMS isApproved)
   if (currentUser?.isActive === false) {
-    logout();
+    logout('/login?error=account_suspended', { silent: true });
     return <Navigate to="/login?error=account_suspended" replace />;
   }
 
-  // Check LMS access requirements
-  if (requireLMS && currentUser?.isApproved === false) {
-    logout();
+  // Only enforce LMS approval on non-admin LMS routes when explicitly requested
+  if (requireLMS && !isAdmin && currentUser?.isApproved === false) {
+    logout('/login?error=not_approved', { silent: true });
     return <Navigate to="/login?error=not_approved" replace />;
   }
 

@@ -1,239 +1,238 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { message } from "antd";
 import api from "../api/axios";
+import {
+  ACCOUNT_INACTIVE_EVENT,
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  getLastAccountVerifiedAt,
+  isInactiveAccountError,
+  resetAccountVerifiedStamp,
+  stampAccountVerified,
+} from "../utils/authSession";
 
 const AuthContext = createContext();
+
+const CLICK_REVERIFY_INTERVAL_MS = 2000;
+
+const buildNormalizedUser = (user) => ({
+  _id: user._id,
+  fullname: user.fullname || "",
+  email: user.email || "",
+  role: user.role || "user",
+  isApproved: user.isApproved,
+  isActive: user.isActive !== false,
+  phone: user.phone || "",
+  address: user.address || "",
+  adminRoleId: user.adminRoleId,
+  adminPermissions: user.adminPermissions || {},
+  discount: user.discount || 0,
+});
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const verifyInFlightRef = useRef(null);
+  const isMountedRef = useRef(true);
+  const lastVerifiedPathRef = useRef(location.pathname);
 
-  // Check if user is authenticated on app load
   useEffect(() => {
-    let isMounted = true;
+    isMountedRef.current = true;
+    const handleInactiveEvent = () => {
+      delete api.defaults.headers.common["Authorization"];
+      if (isMountedRef.current) {
+        setCurrentUser(null);
+        setLoading(false);
+      }
+    };
+    window.addEventListener(ACCOUNT_INACTIVE_EVENT, handleInactiveEvent);
+    return () => {
+      isMountedRef.current = false;
+      window.removeEventListener(ACCOUNT_INACTIVE_EVENT, handleInactiveEvent);
+    };
+  }, []);
 
+  const verifyActiveAccountStatus = useCallback(async ({ force = false } = {}) => {
+    if (typeof window === "undefined") return false;
+    const token = localStorage.getItem("token");
+    if (!token) return false;
+    if (window.location.pathname.includes("/login")) return false;
+
+    if (!force && Date.now() - getLastAccountVerifiedAt() < CLICK_REVERIFY_INTERVAL_MS) {
+      return true;
+    }
+
+    if (verifyInFlightRef.current) {
+      return verifyInFlightRef.current;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        api.defaults.headers.common["Authorization"] = token.startsWith("Bearer ")
+          ? token
+          : `Bearer ${token}`;
+
+        const response = await api.get("/auth/profile");
+        const freshUser = response.data?.user;
+
+        if (!freshUser) return false;
+
+        if (freshUser.isActive === false) {
+          forceLogoutInactiveAccount(
+            "Your account has been deactivated. Please contact the administrator.",
+          );
+          if (isMountedRef.current) {
+            setCurrentUser(null);
+            setLoading(false);
+          }
+          return false;
+        }
+
+        stampAccountVerified();
+        const userData = buildNormalizedUser(freshUser);
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        if (isMountedRef.current) {
+          setCurrentUser(userData);
+          setLoading(false);
+        }
+        return true;
+      } catch (error) {
+        if (isInactiveAccountError(error)) {
+          forceLogoutInactiveAccount(error.response?.data?.message);
+          if (isMountedRef.current) {
+            setCurrentUser(null);
+            setLoading(false);
+          }
+          return false;
+        }
+        if (error.response?.status === 401 || error?.isAuthError) {
+          clearAuthStorage();
+          resetAccountVerifiedStamp();
+          if (isMountedRef.current) {
+            setCurrentUser(null);
+            setLoading(false);
+          }
+          if (!window.location.pathname.includes("/login")) {
+            navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`, {
+              replace: true,
+            });
+          }
+          return false;
+        }
+        // Preserve session only on transient network failure
+        console.warn("Live account status verification warning:", error?.message || error);
+        if (isMountedRef.current) {
+          setLoading(false);
+        }
+        return true;
+      } finally {
+        verifyInFlightRef.current = null;
+      }
+    })();
+
+    verifyInFlightRef.current = requestPromise;
+    return requestPromise;
+  }, [navigate]);
+
+  // Initial authentication bootstrap
+  useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Check if we're on the client side before accessing localStorage
         if (typeof window === "undefined") {
           setLoading(false);
           return;
         }
 
         const token = localStorage.getItem("token");
-        const refreshToken = localStorage.getItem("refreshToken");
         const userStr = localStorage.getItem("user");
 
-        // If no tokens, clear everything and return
         if (!token) {
-          if (isMounted) {
+          clearAuthStorage();
+          if (isMountedRef.current) {
             setCurrentUser(null);
             setLoading(false);
-          }
-          // Clear any partial data
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("token");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("user");
           }
           return;
         }
 
-        // Try to restore user from localStorage first (for faster load)
-        if (userStr && isMounted) {
+        api.defaults.headers.common["Authorization"] = token.startsWith("Bearer ")
+          ? token
+          : `Bearer ${token}`;
+
+        if (userStr) {
           try {
-            const userData = JSON.parse(userStr);
-            setCurrentUser(userData);
-            setLoading(false);
-
-            // Set the auth header for future requests
-            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-            // Verify with backend in background (non-blocking)
-            verifyWithBackend(token, refreshToken, isMounted).catch((err) => {
-              console.error("Background auth verification failed:", err);
-              // Don't log out user on background verification failure
-              // Let the axios interceptor handle token refresh on actual API calls
-            });
-            return;
+            const cachedUser = JSON.parse(userStr);
+            if (cachedUser?.isActive === false) {
+              forceLogoutInactiveAccount();
+              return;
+            }
+            if (isMountedRef.current) {
+              setCurrentUser(cachedUser);
+              setLoading(false);
+            }
           } catch (parseError) {
-            console.error(
-              "Failed to parse user from localStorage:",
-              parseError,
-            );
-            // Continue with backend verification
+            console.error("Failed to parse user from localStorage:", parseError);
           }
         }
 
-        // Set the auth header for the initial request
-        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-
-        // Verify with backend
-        await verifyWithBackend(token, refreshToken, isMounted);
+        await verifyActiveAccountStatus({ force: true });
       } catch (error) {
         console.error("Unexpected error during auth check:", error);
-        if (isMounted) {
+        clearAuthStorage();
+        if (isMountedRef.current) {
           setCurrentUser(null);
           setLoading(false);
         }
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("user");
-        }
-
-        // Only redirect if not already on login page
         if (!location.pathname.includes("/login")) {
           navigate("/login", { replace: true });
         }
       }
     };
 
-    const verifyWithBackend = async (token, refreshToken, isMounted) => {
-      try {
-        // Get fresh user data
-        const response = await api.get("/auth/profile");
+    checkAuth();
+  }, [verifyActiveAccountStatus]);
 
-        if (response.data && response.data.user && isMounted) {
-          // Store the updated user data
-          const userData = {
-            _id: response.data.user._id,
-            fullname: response.data.user.fullname,
-            email: response.data.user.email,
-            role: response.data.user.role,
-            isApproved: response.data.user.isApproved,
-            isActive: response.data.user.isActive !== false,
-            phone: response.data.user.phone || "",
-            address: response.data.user.address || "",
-            adminRoleId: response.data.user.adminRoleId,
-            adminPermissions: response.data.user.adminPermissions || {},
-            discount: response.data.user.discount || 0,
-          };
+  // Re-verify live account status on every admin route transition
+  useEffect(() => {
+    if (!currentUser || location.pathname.includes("/login")) {
+      lastVerifiedPathRef.current = location.pathname;
+      return;
+    }
+    if (lastVerifiedPathRef.current === location.pathname) return;
+    lastVerifiedPathRef.current = location.pathname;
+    verifyActiveAccountStatus({ force: true });
+  }, [location.pathname, currentUser?._id, verifyActiveAccountStatus]);
 
-          localStorage.setItem("user", JSON.stringify(userData));
-          setCurrentUser(userData);
+  // Re-verify active status on every click step & tab focus when inside admin panel
+  useEffect(() => {
+    if (typeof window === "undefined" || !currentUser || location.pathname.includes("/login")) {
+      return;
+    }
 
-          // Handle redirects based on user status using React Router
-          if (!userData.isActive) {
-            if (location.pathname !== "/suspended") {
-              navigate("/suspended", { replace: true });
-            }
-          } else if (location.pathname === "/suspended") {
-            navigate("/", { replace: true });
-          }
+    const handleClickCheck = () => {
+      verifyActiveAccountStatus({ force: false });
+    };
 
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-        console.error("Auth verification failed:", error);
-
-        // If we get a 401, the interceptor will handle token refresh
-        if (error.response?.status === 401) {
-          try {
-            // Try to refresh the token
-            const refreshResponse = await api.post("/auth/refresh-token", {
-              refreshToken: localStorage.getItem("refreshToken"),
-            });
-
-            if (refreshResponse.data.token) {
-              const {
-                token: newToken,
-                refreshToken: newRefreshToken,
-                user,
-              } = refreshResponse.data;
-
-              // Update tokens in localStorage
-              if (typeof window !== "undefined") {
-                localStorage.setItem("token", newToken);
-                if (newRefreshToken) {
-                  localStorage.setItem("refreshToken", newRefreshToken);
-                }
-              }
-
-              // Update the authorization header
-              api.defaults.headers.common["Authorization"] =
-                `Bearer ${newToken}`;
-
-              // Update user data
-              const userData = {
-                _id: user._id,
-                fullname: user.fullname,
-                email: user.email,
-                role: user.role,
-                isActive: user.isActive !== false, // Default to true if not specified
-                isApproved: user.isApproved,
-                phone: user.phone || "",
-                address: user.address || "",
-                adminRoleId: user.adminRoleId,
-                adminPermissions: user.adminPermissions || {},
-                discount: user.discount || 0,
-              };
-
-              if (typeof window !== "undefined") {
-                localStorage.setItem("user", JSON.stringify(userData));
-              }
-
-              if (isMounted) {
-                setCurrentUser(userData);
-                setLoading(false);
-              }
-              return;
-            }
-          } catch (refreshError) {
-            console.error("Token refresh failed:", refreshError);
-            // Only clear auth data on refresh failure if it's a real auth error
-            if (
-              refreshError.response?.status === 401 ||
-              refreshError.message?.includes("token")
-            ) {
-              if (typeof window !== "undefined") {
-                localStorage.removeItem("token");
-                localStorage.removeItem("refreshToken");
-                localStorage.removeItem("user");
-              }
-
-              if (isMounted) {
-                setCurrentUser(null);
-                setLoading(false);
-
-                // Only redirect if not already on login page
-                if (!location.pathname.includes("/login")) {
-                  navigate("/login", { replace: true });
-                }
-              }
-            } else {
-              // For network errors, don't log out - let user stay logged in
-              console.warn(
-                "Network error during token refresh, keeping user logged in",
-              );
-              if (isMounted) {
-                setLoading(false);
-              }
-            }
-            return;
-          }
-        } else {
-          console.error("Network or server error during auth check:", error);
-          // For network errors, don't log out the user - keep them logged in
-          // The axios interceptor will handle token refresh on actual API calls
-          if (isMounted) {
-            setLoading(false);
-          }
-        }
+    const handleFocusOrVisibility = () => {
+      if (document.visibilityState === "visible") {
+        verifyActiveAccountStatus({ force: false });
       }
     };
 
-    checkAuth();
+    document.addEventListener("click", handleClickCheck, true);
+    window.addEventListener("focus", handleFocusOrVisibility);
+    document.addEventListener("visibilitychange", handleFocusOrVisibility);
 
-    // Cleanup function
     return () => {
-      isMounted = false;
+      document.removeEventListener("click", handleClickCheck, true);
+      window.removeEventListener("focus", handleFocusOrVisibility);
+      document.removeEventListener("visibilitychange", handleFocusOrVisibility);
     };
-  }, []);
+  }, [currentUser?._id, location.pathname, verifyActiveAccountStatus]);
 
   // Login function
   const login = async (email, password) => {
@@ -264,20 +263,18 @@ export function AuthProvider({ children }) {
         }
 
         // Store user data
-        const userData = {
-          _id: user._id,
-          fullname: user.fullname || "",
-          email: user.email || "",
-          role: user.role || "user",
-          isApproved: user.isApproved, // Use the value directly from the server
-          isActive: user.isActive !== false, // Default to true if not specified
-          phone: user.phone || "",
-          address: user.address || "",
-          adminRoleId: user.adminRoleId,
-          adminPermissions: user.adminPermissions || {},
-          discount: user.discount || 0,
-        };
+        const userData = buildNormalizedUser(user);
+        if (userData.isActive === false) {
+          forceLogoutInactiveAccount(
+            "Your account has been deactivated. Please contact the administrator.",
+          );
+          return {
+            success: false,
+            error: "Your account has been deactivated. Please contact the administrator.",
+          };
+        }
 
+        stampAccountVerified();
         if (typeof window !== "undefined") {
           localStorage.setItem("user", JSON.stringify(userData));
         }
@@ -344,14 +341,10 @@ export function AuthProvider({ children }) {
   };
 
   // Logout function
-  const logout = () => {
+  const logout = useCallback((redirectPath = "/login", { silent = false } = {}) => {
     try {
-      // Clear all auth-related data from localStorage
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-      }
+      clearAuthStorage();
+      resetAccountVerifiedStamp();
 
       // Clear auth header
       delete api.defaults.headers.common["Authorization"];
@@ -360,15 +353,16 @@ export function AuthProvider({ children }) {
       setCurrentUser(null);
 
       // Redirect to login
-      navigate("/login", { replace: true });
+      navigate(redirectPath || "/login", { replace: true });
     } catch (error) {
       console.error("Error during logout:", error);
-      // Even if there's an error, still try to clear state and redirect
       setCurrentUser(null);
-      navigate("/login", { replace: true });
+      navigate(redirectPath || "/login", { replace: true });
     }
-    message.success("Logged out successfully");
-  };
+    if (!silent) {
+      message.success("Logged out successfully");
+    }
+  }, [navigate]);
 
   // Update user function
   const updateUser = (userData) => {
@@ -389,28 +383,21 @@ export function AuthProvider({ children }) {
 
   // Set user from tokens (for OTP verification)
   const setUserFromTokens = (token, refreshToken, user) => {
+    const userData = buildNormalizedUser(user);
+    if (userData.isActive === false) {
+      forceLogoutInactiveAccount(
+        "Your account has been deactivated. Please contact the administrator.",
+      );
+      return;
+    }
+
     if (typeof window !== "undefined") {
       localStorage.setItem("token", token);
       localStorage.setItem("refreshToken", refreshToken);
-    }
-
-    const userData = {
-      _id: user._id,
-      fullname: user.fullname || "",
-      email: user.email || "",
-      role: user.role || "user",
-      isApproved: user.isApproved,
-      isActive: user.isActive !== false,
-      phone: user.phone || "",
-      address: user.address || "",
-      adminRoleId: user.adminRoleId,
-      adminPermissions: user.adminPermissions || {},
-      discount: user.discount || 0,
-    };
-
-    if (typeof window !== "undefined") {
       localStorage.setItem("user", JSON.stringify(userData));
     }
+
+    stampAccountVerified();
     setCurrentUser(userData);
 
     // Set the auth header for future requests
@@ -419,7 +406,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
-    isAuthenticated: !!currentUser,
+    isAuthenticated: Boolean(currentUser && currentUser.isActive !== false),
     isApproved: currentUser?.isApproved || false,
     isAdmin:
       currentUser?.role === "admin" ||
@@ -431,6 +418,7 @@ export function AuthProvider({ children }) {
     logout,
     updateUser,
     setUserFromTokens,
+    verifyActiveAccountStatus,
   };
 
   return (

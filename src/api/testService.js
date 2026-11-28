@@ -1,4 +1,10 @@
 import axios from "axios";
+import {
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  isInactiveAccountError,
+  stampAccountVerified,
+} from "../utils/authSession";
 
 // Use the base URL from environment or fallback to empty string
 const API_URL = "/api/test-questions";
@@ -29,16 +35,24 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle 401 errors
+// Add response interceptor to handle 401 / inactive account errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response?.config?.headers?.Authorization) {
+      stampAccountVerified();
+    }
+    return response;
+  },
   (error) => {
+    if (isInactiveAccountError(error)) {
+      forceLogoutInactiveAccount(error.response?.data?.message);
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
-      // Token is invalid or expired
-      console.error('Authentication error:', error.response?.data?.message || 'Unauthorized');
-      // Optionally clear the invalid token
-      localStorage.removeItem('token');
-      // You might want to redirect to login here
+      clearAuthStorage();
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

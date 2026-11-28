@@ -1,5 +1,11 @@
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import {
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  isInactiveAccountError,
+  stampAccountVerified,
+} from "./authSession";
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -26,7 +32,17 @@ api.interceptors.request.use(
 
 // Add a response interceptor to handle errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const sentAuth = Boolean(response?.config?.headers?.Authorization);
+    if (sentAuth) {
+      if (response?.data?.user?.isActive === false) {
+        forceLogoutInactiveAccount();
+        return Promise.reject(new Error("Account is inactive"));
+      }
+      stampAccountVerified();
+    }
+    return response;
+  },
   (error) => {
     console.error("API Error:", {
       status: error.response?.status,
@@ -36,23 +52,24 @@ api.interceptors.response.use(
       config: error.config,
     });
 
+    if (isInactiveAccountError(error)) {
+      forceLogoutInactiveAccount(error.response?.data?.message);
+      return Promise.reject(error);
+    }
+
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
       // Only handle if not already on the login page and not a public route
       const isPublicRoute = [
         "/login",
         "/signup",
-        "/",
         "/about",
         "/contact",
       ].some((route) => window.location.pathname.startsWith(route));
 
       if (!isPublicRoute) {
         // Clear all auth data
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("user");
-        localStorage.removeItem("Users");
+        clearAuthStorage();
 
         // Show error message if there is one
         if (error.response?.data?.message) {
@@ -61,10 +78,7 @@ api.interceptors.response.use(
           toast.error("Your session has expired. Please log in again.");
         }
 
-        // Only redirect if not already on a public route
-        if (!isPublicRoute) {
-          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-        }
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
       }
     } else if (error.response?.status === 403) {
       // Handle forbidden access

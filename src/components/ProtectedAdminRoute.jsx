@@ -10,7 +10,7 @@ const LoadingSpinner = () => (
 );
 
 export default function ProtectedAdminRoute({ children, action = "canView" }) {
-  const { currentUser, isAuthenticated, loading } = useAuth();
+  const { currentUser, isAuthenticated, loading, logout } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -20,6 +20,12 @@ export default function ProtectedAdminRoute({ children, action = "canView" }) {
   // If not authenticated, redirect to login
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // Enforce active account status for every admin route (do not check LMS isApproved)
+  if (currentUser?.isActive === false) {
+    logout("/login?error=account_suspended", { silent: true });
+    return <Navigate to="/login?error=account_suspended" replace />;
   }
 
   // Check if user is authorized (admin, employee, or has adminRoleId)

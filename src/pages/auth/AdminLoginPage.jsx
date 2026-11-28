@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../contexts/AuthContext";
 import userApi from "../../api/userApi";
-import { KeyRound, Mail, Lock, ArrowRight, CheckCircle2 } from "lucide-react";
+import { KeyRound, Mail, Lock, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 
 export default function AdminLoginPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,6 +14,10 @@ export default function AdminLoginPage() {
   const { login, isAuthenticated, setUserFromTokens } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const errorParam = searchParams.get("error");
+  const isSuspendedError =
+    errorParam === "account_suspended" || errorParam === "account_inactive";
   const from = location.state?.from?.pathname || "/admin";
 
   const {
@@ -63,7 +67,11 @@ export default function AdminLoginPage() {
         navigate(from, { replace: true });
       }
     } catch (error) {
-      toast.error(error.message || "OTP verification failed. Please try again.");
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "OTP verification failed. Please try again.",
+      );
     } finally {
       setIsVerifyingOTP(false);
     }
@@ -86,6 +94,22 @@ export default function AdminLoginPage() {
             Secure administration and management portal
           </p>
         </div>
+
+        {/* Account Inactive / Suspended Alert */}
+        {isSuspendedError && (
+          <div
+            role="alert"
+            className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/60 px-4 py-3 text-sm text-rose-100"
+          >
+            <AlertTriangle className="h-5 w-5 text-rose-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-white">Account Inactive</p>
+              <p className="text-xs text-rose-200 mt-0.5">
+                Your admin account is currently inactive or deactivated. Please contact your Super Administrator to reactivate access.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Card */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 shadow-2xl">

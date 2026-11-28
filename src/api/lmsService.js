@@ -1,4 +1,10 @@
 import axios from 'axios';
+import {
+  clearAuthStorage,
+  forceLogoutInactiveAccount,
+  isInactiveAccountError,
+  stampAccountVerified,
+} from '../utils/authSession';
 
 const API_BASE_URL = '/api/lms'; // Update this with your actual API base URL
 
@@ -24,15 +30,24 @@ api.interceptors.request.use(
   }
 );
 
-// Add response interceptor to handle 401 errors
+// Add response interceptor to handle 401 / inactive errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (response?.config?.headers?.Authorization) {
+      stampAccountVerified();
+    }
+    return response;
+  },
   (error) => {
+    if (isInactiveAccountError(error)) {
+      forceLogoutInactiveAccount(error.response?.data?.message);
+      return Promise.reject(error);
+    }
     if (error.response?.status === 401) {
-      // Handle unauthorized error
-      // Redirect to login or refresh token
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      clearAuthStorage();
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
